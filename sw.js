@@ -3,7 +3,7 @@
    Submissions themselves are queued in localStorage by index.html,
    not here — this only caches the static files that make up the UI. */
 
-const CACHE_NAME = "co-antique-kiosk-v1";
+const CACHE_NAME = "co-antique-kiosk-v2";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -37,11 +37,28 @@ self.addEventListener("fetch", (event) => {
   // always hit the network (or fail and get queued by index.html).
   if (url.hostname.includes("script.google.com")) return;
 
+  // The HTML page itself: try the network FIRST so a freshly-uploaded
+  // index.html shows up on the very next reload, not just after a hard
+  // refresh. Only fall back to the cached copy if the network is down
+  // (that's what keeps the kiosk usable through a dropped wifi connection).
+  const isPage = event.request.mode === "navigate" || url.pathname.endsWith("index.html") || url.pathname.endsWith("/");
+  if (isPage) {
+    event.respondWith(
+      fetch(event.request).then((resp) => {
+        const clone = resp.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return resp;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Everything else (icons, manifest, fonts): cache-first, since these
+  // rarely change and this is what makes repeat loads feel instant.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((resp) => {
-        // Cache same-origin GETs as we see them (e.g. Google Fonts CSS/files)
         if (event.request.method === "GET" && resp.status === 200) {
           const clone = resp.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
