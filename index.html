@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>CO Antique Feedback</title>
+<meta name="theme-color" content="#0F1B63">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&family=Alegreya:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     CO ANTIQUE FEEDBACK KIOSK
+     Colors sampled directly from the official CO Antique signage.
+     Edit the CONFIG block near the bottom of the <script> to set
+     the Apps Script URL, kiosk label, and "who served you" options.
+     ============================================================ */
+  :root{
+    --navy:      #0F1B63;
+    --navy-dark: #0A123F;
+    --red:       #9C0D10;
+    --gold:      #D4AF37;
+    --cream:     #FFFBEF;
+    --cream-2:   #FFF6DC;
+    --ink:       #14205F;
+    --ink-soft:  #4A538C;
+    --ok:        #1E7D46;
+    --warn:      #B23B1E;
+    --radius:    28px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--navy); color:var(--ink);
+    font-family:'Public Sans',system-ui,sans-serif;
+    overflow:hidden; position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .wordmark{font-family:'Alegreya',serif;}
+
+  /* ---------- wavy brand frame (top/bottom) ---------- */
+  .wave{position:fixed; left:0; right:0; width:100%; height:9vh; min-height:56px; max-height:110px; z-index:5; pointer-events:none;}
+  .wave.top{top:0;}
+  .wave.bottom{bottom:0; transform:scaleY(-1);}
+  .wave svg{width:100%; height:100%; display:block;}
+
+  /* ---------- app shell ---------- */
+  #app{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .screen{
+    position:absolute; inset:0;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    padding: calc(9vh + var(--safe-top) + 18px) 6vw calc(9vh + var(--safe-bottom) + 18px);
+    text-align:center;
+    background:var(--cream);
+    opacity:0; transform:translateY(14px);
+    transition:opacity .28s ease, transform .28s ease;
+  }
+  .screen.active{display:flex;}
+  .screen.show{opacity:1; transform:translateY(0);}
+
+  .eyebrow{
+    font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+    font-size:clamp(12px,1.6vw,15px); color:var(--red); margin:0 0 10px;
+  }
+  h1.title{
+    font-family:'Alegreya',serif; font-weight:800; color:var(--navy);
+    font-size:clamp(26px,4.4vw,46px); line-height:1.15; margin:0 0 6px;
+  }
+  p.sub{ color:var(--ink-soft); font-size:clamp(14px,1.9vw,19px); margin:0 0 26px; max-width:56ch;}
+
+  /* progress dots for the 12-question run */
+  .progress{display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap; justify-content:center; max-width:90vw;}
+  .progress i{width:9px;height:9px;border-radius:50%;background:#E4DFC9; display:inline-block;}
+  .progress i.done{background:var(--gold);}
+  .progress i.now{background:var(--red); transform:scale(1.3);}
+
+  /* grid of big tap tiles */
+  .tiles{
+    display:grid; gap:16px; width:100%; max-width:1000px;
+    grid-template-columns:repeat(var(--cols,2), 1fr);
+  }
+  .tile{
+    background:#fff; border:2px solid #EFE6C8; border-radius:20px;
+    padding:22px 18px; font-size:clamp(16px,2vw,20px); font-weight:700; color:var(--navy);
+    cursor:pointer; box-shadow:0 2px 0 rgba(15,27,99,.05);
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+    line-height:1.3; min-height:84px; display:flex; align-items:center; justify-content:center;
+  }
+  .tile:active{transform:scale(.96); background:var(--cream-2);}
+  .tile.selected{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .tile.chip{border-radius:999px; min-height:auto; padding:16px 22px; font-size:clamp(14px,1.7vw,17px);}
+  .tile.wide{grid-column:1/-1;}
+
+  /* rating row (emoji faces) */
+  .statement-card{
+    background:#fff; border-radius:22px; padding:26px clamp(18px,4vw,40px);
+    max-width:900px; width:100%; box-shadow:0 2px 0 rgba(15,27,99,.06); margin-bottom:26px;
+  }
+  .statement-card p{font-size:clamp(18px,2.6vw,26px); font-weight:700; color:var(--navy); margin:0; line-height:1.35;}
+  .ratings{display:flex; gap:clamp(8px,1.6vw,18px); justify-content:center; flex-wrap:wrap; width:100%; max-width:960px;}
+  .rate-btn{
+    width:clamp(72px,10vw,108px); height:clamp(72px,10vw,108px);
+    border-radius:50%; border:3px solid transparent; background:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    cursor:pointer; box-shadow:0 2px 0 rgba(15,27,99,.08);
+    transition:transform .12s ease;
+  }
+  .rate-btn:active{transform:scale(.92);}
+  .rate-btn .face{font-size:clamp(28px,4.4vw,38px); line-height:1;}
+  .rate-btn .lbl{font-size:clamp(9px,1.1vw,12px); font-weight:700; color:var(--ink-soft); max-width:80px;}
+  .rate-btn.r5{border-color:#1E7D46;} .rate-btn.r4{border-color:#6BAE5C;}
+  .rate-btn.r3{border-color:#D4AF37;} .rate-btn.r2{border-color:#E08A3C;}
+  .rate-btn.r1{border-color:#B23B1E;} .rate-btn.rna{border-color:#B8B2C9;}
+
+  /* comment chip screen */
+  .chipwrap{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:900px;}
+
+  /* buttons */
+  .btn{
+    font-family:inherit; font-weight:800; font-size:clamp(15px,1.9vw,19px);
+    color:#fff; background:var(--navy); border:none; border-radius:999px;
+    padding:16px 40px; cursor:pointer; box-shadow:0 3px 0 var(--navy-dark);
+  }
+  .btn:active{transform:translateY(2px); box-shadow:0 1px 0 var(--navy-dark);}
+  .btn.ghost{background:transparent; color:var(--ink-soft); box-shadow:none; font-weight:700;}
+  .btn.gold{background:var(--gold); color:var(--navy-dark); box-shadow:0 3px 0 #a5872a;}
+  .row-actions{display:flex; gap:16px; margin-top:26px; align-items:center; flex-wrap:wrap; justify-content:center;}
+
+  /* idle / welcome screen */
+  #screen-idle{background:var(--navy); cursor:pointer;}
+  #screen-idle .seal{width:clamp(90px,14vw,150px); height:auto; margin-bottom:18px; filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));}
+  #screen-idle .wordmark{color:#fff; font-size:clamp(30px,5vw,54px); font-weight:800; margin:0;}
+  #screen-idle .tagline{color:#DCE0F5; font-size:clamp(15px,2.2vw,22px); margin:10px 0 34px;}
+  .pulse-btn{
+    background:var(--gold); color:var(--navy-dark); font-family:'Alegreya',serif; font-weight:800;
+    font-size:clamp(20px,3vw,30px); border:none; border-radius:999px; padding:20px 56px;
+    cursor:pointer; animation:pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{transform:scale(1); box-shadow:0 0 0 0 rgba(212,175,55,.5);} 50%{transform:scale(1.035); box-shadow:0 0 0 14px rgba(212,175,55,0);}}
+
+  /* thank you */
+  #screen-done .checkmark{font-size:clamp(60px,9vw,96px); margin-bottom:6px;}
+
+  /* offline / status pill */
+  #net-pill{
+    position:fixed; top:calc(9vh + var(--safe-top) + 10px); right:16px; z-index:20;
+    background:rgba(15,27,99,.9); color:#fff; font-size:12px; font-weight:700;
+    padding:6px 12px; border-radius:999px; display:none; align-items:center; gap:6px;
+  }
+  #net-pill.show{display:flex;}
+  #net-pill .dot{width:8px;height:8px;border-radius:50%; background:var(--gold);}
+
+  /* small keyboard overlay for the one optional free-text field */
+  #overlay-text{
+    position:fixed; inset:0; z-index:30; background:rgba(10,18,63,.55);
+    display:none; align-items:center; justify-content:center; padding:6vw;
+  }
+  #overlay-text.show{display:flex;}
+  #overlay-text .box{background:#fff; border-radius:24px; padding:28px; width:100%; max-width:640px; text-align:center;}
+  #overlay-text textarea{
+    width:100%; min-height:120px; border-radius:14px; border:2px solid #EFE6C8; padding:14px;
+    font-family:inherit; font-size:18px; resize:none; color:var(--ink);
+  }
+
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+
+<div class="wave top"><svg viewBox="0 0 1440 100" preserveAspectRatio="none"><path d="M0,60 C 200,110 350,0 620,30 C 900,62 1050,10 1440,55 L1440,0 L0,0 Z" fill="#0F1B63"/><path d="M0,72 C 220,118 380,20 640,46 C 920,74 1060,26 1440,68 L1440,100 L0,100 Z" fill="#9C0D10"/><path d="M0,86 C 240,120 400,44 660,62 C 940,84 1070,46 1440,80 L1440,100 L0,100 Z" fill="#D4AF37"/></svg></div>
+<div class="wave bottom"><svg viewBox="0 0 1440 100" preserveAspectRatio="none"><path d="M0,60 C 200,110 350,0 620,30 C 900,62 1050,10 1440,55 L1440,0 L0,0 Z" fill="#0F1B63"/><path d="M0,72 C 220,118 380,20 640,46 C 920,74 1060,26 1440,68 L1440,100 L0,100 Z" fill="#9C0D10"/><path d="M0,86 C 240,120 400,44 660,62 C 940,84 1070,46 1440,80 L1440,100 L0,100 Z" fill="#D4AF37"/></svg></div>
+
+<div id="net-pill"><span class="dot"></span><span id="net-pill-text">Saved on device — will sync</span></div>
+
+<div id="app">
+
+  <!-- IDLE -->
+  <section class="screen active" id="screen-idle">
+    <img class="seal" src="dfa-seal-color.png" alt="DFA Seal">
+    <p class="wordmark">CO Antique</p>
+    <p class="tagline">How was your visit today?</p>
+    <button class="pulse-btn" id="btn-start">Tap to Begin</button>
+  </section>
+
+  <!-- CLIENT TYPE -->
+  <section class="screen" id="screen-clienttype">
+    <p class="eyebrow">Step 1 of 5</p>
+    <h1 class="title">Which best describes you?</h1>
+    <div class="tiles" id="tiles-clienttype" style="--cols:2"></div>
+  </section>
+
+  <!-- SERVICE CATEGORY -->
+  <section class="screen" id="screen-category">
+    <p class="eyebrow">Step 2 of 5</p>
+    <h1 class="title">What service did you avail?</h1>
+    <div class="tiles" id="tiles-category" style="--cols:2"></div>
+  </section>
+
+  <!-- SUB SERVICE -->
+  <section class="screen" id="screen-subservice">
+    <p class="eyebrow">Step 2 of 5</p>
+    <h1 class="title" id="subservice-title">Which one, specifically?</h1>
+    <div class="tiles" id="tiles-subservice" style="--cols:1"></div>
+  </section>
+
+  <!-- DEMOGRAPHICS: SEX -->
+  <section class="screen" id="screen-sex">
+    <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
+    <h1 class="title">Sex</h1>
+    <p class="sub">Totally optional — tap Skip if you'd rather not say.</p>
+    <div class="tiles" id="tiles-sex" style="--cols:2"></div>
+    <div class="row-actions"><button class="btn ghost" data-skip="sex">Skip this</button></div>
+  </section>
+
+  <!-- DEMOGRAPHICS: AGE -->
+  <section class="screen" id="screen-age">
+    <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
+    <h1 class="title">Age range</h1>
+    <div class="tiles" id="tiles-age" style="--cols:3"></div>
+    <div class="row-actions"><button class="btn ghost" data-skip="age">Skip this</button></div>
+  </section>
+
+  <!-- DEMOGRAPHICS: REGION -->
+  <section class="screen" id="screen-region">
+    <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
+    <h1 class="title">Where are you currently residing?</h1>
+    <div class="tiles" id="tiles-region" style="--cols:2"></div>
+    <div class="row-actions"><button class="btn ghost" data-skip="region">Skip this</button></div>
+  </section>
+
+  <!-- RATING (template, filled by JS) -->
+  <section class="screen" id="screen-rating">
+    <div class="progress" id="rating-progress"></div>
+    <div class="statement-card"><p id="rating-statement">Statement text</p></div>
+    <div class="ratings" id="rating-buttons"></div>
+  </section>
+
+  <!-- COMMENT CHIPS -->
+  <section class="screen" id="screen-comments">
+    <p class="eyebrow">Step 5 of 5 &middot; Optional</p>
+    <h1 class="title" id="comments-title">Anything you'd like to add?</h1>
+    <p class="sub">Tap as many as apply. You can also skip this.</p>
+    <div class="chipwrap" id="chip-list"></div>
+    <div class="row-actions">
+      <button class="btn ghost" id="btn-comments-skip">Skip</button>
+      <button class="btn gold" id="btn-comments-next">Continue</button>
+    </div>
+  </section>
+
+  <!-- WHO SERVED YOU -->
+  <section class="screen" id="screen-recognize">
+    <p class="eyebrow">Optional</p>
+    <h1 class="title">Want to recognize someone who helped you?</h1>
+    <p class="sub">Pick a window or name — you can choose more than one.</p>
+    <div class="chipwrap" id="recognize-list"></div>
+    <div class="row-actions">
+      <button class="btn ghost" id="btn-recognize-skip">Skip</button>
+      <button class="btn gold" id="btn-recognize-next">Finish</button>
+    </div>
+  </section>
+
+  <!-- DONE -->
+  <section class="screen" id="screen-done">
+    <div class="checkmark">✅</div>
+    <h1 class="title">Salamat! Thank you!</h1>
+    <p class="sub">Your feedback helps CO Antique serve you better.</p>
+  </section>
+
+</div>
+
+<div id="overlay-text">
+  <div class="box">
+    <h1 class="title" style="font-size:22px;">Anything else?</h1>
+    <textarea id="other-text" maxlength="240" placeholder="Type a short note..."></textarea>
+    <div class="row-actions">
+      <button class="btn ghost" id="btn-other-cancel">Cancel</button>
+      <button class="btn gold" id="btn-other-save">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — edit these before deploying
+   ============================================================ */
+const CONFIG = {
+  // Paste the Apps Script "Web app" URL here once deployed (see code.gs / SETUP.md)
+  SUBMIT_URL: "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE",
+
+  // Label this tablet so submissions show which unit they came from.
+  // e.g. "Main-Tablet-1", "Main-Tablet-2", "Releasing-Tablet"
+  KIOSK_LABEL: "Tablet-1",
+
+  OFFICE: "CO - Antique",
+
+  // Placeholder — replace with real window numbers / staff nicknames.
+  RECOGNIZE_OPTIONS: ["Window 1", "Window 2", "Window 3", "Releasing Window"],
+
+  // How long the "Thank you" screen shows before resetting to idle (ms)
+  DONE_DELAY: 3200,
+  // How long an idle screen waits with no input before it's considered "idle" again (ms) — safety reset
+  IDLE_RESET_AFTER: 90000,
+};
+
+/* ============================================================
+   DATA — sourced from the DFA-QMS F21 CSM form CO Antique uses
+   ============================================================ */
+const CLIENT_TYPES = ["General Public","Business","Government - DFA Employee","Government - Other Agency"];
+
+const SERVICES = {
+  "Passport": ["New Passport Application","Passport Renewal","Certification of Unclaimed Passport","Issuance of Passport Certification","Issuance of Convention Travel Document","Issuance of Official or Diplomatic Passport","Revalidation of Diplomatic or Official Passport","Other Passport-related services"],
+  "Authentication": ["Issuance of Authentication/Apostille","Issuance of Certification","Other Authentication-related services"],
+  "Civil Registry": ["Report of Birth","Report of Marriage","Report of Death","Other Civil Registry-related services"],
+  "Assistance-to-Nationals": ["Assistance-to-Nationals services"]
+};
+
+const SEX_OPTIONS = ["Male","Female"];
+const AGE_OPTIONS = ["Under 18","18–29","30–44","45–59","60+"];
+const REGION_OPTIONS = ["Antique (this province)","Elsewhere in Panay / Western Visayas","Other region, Philippines","Abroad / OFW"];
+
+// 12 statements: Citizen's Charter awareness (CC) + Service Quality Dimensions (SQD)
+const STATEMENTS = [
+  {id:"CC1",  text:"I am aware of the Citizen's Charter and the information available on it."},
+  {id:"CC2",  text:"The Citizen's Charter is available and easily accessible."},
+  {id:"CC3",  text:"The Citizen's Charter helped me understand the process and requirements of the service availed."},
+  {id:"SQD0", text:"I am satisfied with my experience with the DFA."},
+  {id:"SQD1", text:"The assistance was provided in a timely manner."},
+  {id:"SQD2", text:"The office followed the transaction's requirements and steps based on the information provided to me."},
+  {id:"SQD3", text:"The facility was accessible and adequate."},
+  {id:"SQD4", text:"I easily found information that I needed from the office or its website."},
+  {id:"SQD5", text:"I paid a reasonable amount of fees for my transaction, or the service did not require fees."},
+  {id:"SQD6", text:"I feel the office was fair to everyone during my transaction."},
+  {id:"SQD7", text:"I am satisfied with the competence of DFA personnel in performing their duties."},
+  {id:"SQD8", text:"I got what I needed from the government office."},
+];
+const SCALE = [
+  {v:5, face:"😄", lbl:"Strongly Agree", cls:"r5"},
+  {v:4, face:"🙂", lbl:"Agree", cls:"r4"},
+  {v:3, face:"😐", lbl:"Neither", cls:"r3"},
+  {v:2, face:"🙁", lbl:"Disagree", cls:"r2"},
+  {v:1, face:"😠", lbl:"Strongly Disagree", cls:"r1"},
+  {v:"NA", face:"✕", lbl:"N/A", cls:"rna"},
+];
+
+const CHIPS_POSITIVE = ["Fast, efficient service","Staff were polite and helpful","Office was clean and comfortable","Process was clear and easy to follow","Got everything I needed"];
+const CHIPS_NEGATIVE = ["Service was slow","Staff were impolite or unhelpful","Facility needs improvement","Process was confusing or unclear","Fees or requirements weren't clear","Didn't get what I needed"];
+
+/* ============================================================
+   STATE + FLOW
+   ============================================================ */
+let state = {};
+function resetState(){
+  state = {
+    clientType:null, category:null, subService:null,
+    sex:null, age:null, region:null,
+    ratings:{}, chips:[], otherText:"", recognize:[],
+    startedAt:null,
+  };
+}
+resetState();
+
+const screens = ["idle","clienttype","category","subservice","sex","age","region","rating","comments","recognize","done"];
+function show(name){
+  screens.forEach(s=>{
+    const el = document.getElementById("screen-"+s);
+    el.classList.toggle("active", s===name);
+  });
+  requestAnimationFrame(()=>{
+    const el = document.getElementById("screen-"+name);
+    el.classList.remove("show");
+    requestAnimationFrame(()=> el.classList.add("show"));
+  });
+}
+
+function tile(label, onTap, extraClass){
+  const b = document.createElement("button");
+  b.className = "tile" + (extraClass ? " "+extraClass : "");
+  b.textContent = label;
+  b.addEventListener("click", onTap);
+  return b;
+}
+
+/* ---- Step 1: client type ---- */
+const tilesClientType = document.getElementById("tiles-clienttype");
+CLIENT_TYPES.forEach(ct=>{
+  tilesClientType.appendChild(tile(ct, ()=>{ state.clientType = ct; state.startedAt = new Date(); show("category"); }));
+});
+
+/* ---- Step 2: category ---- */
+const tilesCategory = document.getElementById("tiles-category");
+Object.keys(SERVICES).forEach(cat=>{
+  tilesCategory.appendChild(tile(cat, ()=>{
+    state.category = cat;
+    const subs = SERVICES[cat];
+    if(subs.length === 1){ state.subService = subs[0]; show("sex"); }
+    else { renderSubServices(cat); show("subservice"); }
+  }));
+});
+
+function renderSubServices(cat){
+  document.getElementById("subservice-title").textContent = cat + " — which one?";
+  const wrap = document.getElementById("tiles-subservice");
+  wrap.innerHTML = "";
+  SERVICES[cat].forEach(s=>{
+    wrap.appendChild(tile(s, ()=>{ state.subService = s; show("sex"); }));
+  });
+}
+
+/* ---- Step 3: demographics ---- */
+const tilesSex = document.getElementById("tiles-sex");
+SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; show("age"); })));
+document.querySelector('[data-skip="sex"]').addEventListener("click", ()=> show("age"));
+
+const tilesAge = document.getElementById("tiles-age");
+AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; show("region"); })));
+document.querySelector('[data-skip="age"]').addEventListener("click", ()=> show("region"));
+
+const tilesRegion = document.getElementById("tiles-region");
+REGION_OPTIONS.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); })));
+document.querySelector('[data-skip="region"]').addEventListener("click", ()=> startRatings());
+
+/* ---- Step 4: 12 ratings, one at a time ---- */
+let ratingIndex = 0;
+function startRatings(){ ratingIndex = 0; show("rating"); renderRating(); }
+
+function renderRating(){
+  const st = STATEMENTS[ratingIndex];
+  document.getElementById("rating-statement").textContent = st.text;
+
+  const prog = document.getElementById("rating-progress");
+  prog.innerHTML = "";
+  STATEMENTS.forEach((_,i)=>{
+    const dot = document.createElement("i");
+    if(i < ratingIndex) dot.className = "done";
+    else if(i === ratingIndex) dot.className = "now";
+    prog.appendChild(dot);
+  });
+
+  const wrap = document.getElementById("rating-buttons");
+  wrap.innerHTML = "";
+  SCALE.forEach(opt=>{
+    const b = document.createElement("button");
+    b.className = "rate-btn " + opt.cls;
+    b.innerHTML = `<span class="face">${opt.face}</span><span class="lbl">${opt.lbl}</span>`;
+    b.addEventListener("click", ()=>{
+      state.ratings[st.id] = opt.v;
+      ratingIndex++;
+      if(ratingIndex < STATEMENTS.length){ renderRating(); }
+      else { startComments(); }
+    });
+    wrap.appendChild(b);
+  });
+}
+
+/* ---- Step 5: sentiment-matched comment chips ---- */
+function sentimentBucket(){
+  const vals = Object.values(state.ratings).filter(v=> v !== "NA");
+  if(vals.length === 0) return "mixed";
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  if(avg >= 4.0) return "positive";
+  if(avg <= 2.5) return "negative";
+  return "mixed";
+}
+
+function startComments(){
+  const bucket = sentimentBucket();
+  state.sentiment = bucket;
+  let list = [];
+  if(bucket === "positive") list = CHIPS_POSITIVE;
+  else if(bucket === "negative") list = CHIPS_NEGATIVE;
+  else list = [...CHIPS_POSITIVE, ...CHIPS_NEGATIVE];
+
+  const wrap = document.getElementById("chip-list");
+  wrap.innerHTML = "";
+  list.forEach(label=>{
+    const b = tile(label, function(){ toggleChip(label, this); }, "chip");
+    wrap.appendChild(b);
+  });
+  const other = tile("Other…", ()=>{ document.getElementById("overlay-text").classList.add("show"); }, "chip");
+  other.id = "chip-other";
+  wrap.appendChild(other);
+
+  show("comments");
+}
+function toggleChip(label, btn){
+  const i = state.chips.indexOf(label);
+  if(i === -1){ state.chips.push(label); btn.classList.add("selected"); }
+  else { state.chips.splice(i,1); btn.classList.remove("selected"); }
+}
+document.getElementById("btn-other-save").addEventListener("click", ()=>{
+  state.otherText = document.getElementById("other-text").value.trim();
+  document.getElementById("overlay-text").classList.remove("show");
+  const chipOther = document.getElementById("chip-other");
+  if(state.otherText){ chipOther.classList.add("selected"); chipOther.textContent = "Other: " + state.otherText.slice(0,24) + (state.otherText.length>24?"…":""); }
+});
+document.getElementById("btn-other-cancel").addEventListener("click", ()=>{
+  document.getElementById("overlay-text").classList.remove("show");
+});
+document.getElementById("btn-comments-skip").addEventListener("click", afterComments);
+document.getElementById("btn-comments-next").addEventListener("click", afterComments);
+
+function afterComments(){
+  if(state.sentiment === "positive"){ startRecognize(); }
+  else { finish(); }
+}
+
+/* ---- Optional: who served you (positive visits only) ---- */
+function startRecognize(){
+  const wrap = document.getElementById("recognize-list");
+  wrap.innerHTML = "";
+  CONFIG.RECOGNIZE_OPTIONS.forEach(label=>{
+    wrap.appendChild(tile(label, function(){ toggleRecognize(label, this); }, "chip"));
+  });
+  show("recognize");
+}
+function toggleRecognize(label, btn){
+  const i = state.recognize.indexOf(label);
+  if(i === -1){ state.recognize.push(label); btn.classList.add("selected"); }
+  else { state.recognize.splice(i,1); btn.classList.remove("selected"); }
+}
+document.getElementById("btn-recognize-skip").addEventListener("click", finish);
+document.getElementById("btn-recognize-next").addEventListener("click", finish);
+
+/* ---- Finish: optimistic UI, submit in background ---- */
+function finish(){
+  show("done");
+  submitInBackground(buildPayload());
+  setTimeout(()=>{ resetState(); show("idle"); }, CONFIG.DONE_DELAY);
+}
+
+function buildPayload(){
+  const now = new Date();
+  return {
+    kiosk: CONFIG.KIOSK_LABEL,
+    office: CONFIG.OFFICE,
+    submittedAt: now.toISOString(),
+    dateOfTransaction: now.toLocaleDateString('en-CA'), // YYYY-MM-DD
+    clientType: state.clientType,
+    serviceCategory: state.category,
+    subService: state.subService,
+    sex: state.sex,
+    ageRange: state.age,
+    region: state.region,
+    ratings: state.ratings,
+    sentiment: state.sentiment,
+    comments: state.chips,
+    otherComment: state.otherText,
+    recognize: state.recognize,
+  };
+}
+
+/* ---- Submission + offline queue ---- */
+const QUEUE_KEY = "kiosk_pending_submissions";
+function queueLocally(payload){
+  const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  q.push(payload);
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+  updateNetPill();
+}
+function submitInBackground(payload){
+  if(!CONFIG.SUBMIT_URL || CONFIG.SUBMIT_URL.indexOf("PASTE_YOUR") === 0){
+    console.warn("SUBMIT_URL not configured — queuing locally only.");
+    queueLocally(payload);
+    return;
+  }
+  fetch(CONFIG.SUBMIT_URL, {
+    method:"POST",
+    mode:"no-cors", // Apps Script web apps don't return readable CORS headers; fire-and-forget
+    headers:{ "Content-Type":"text/plain;charset=utf-8" }, // avoids CORS preflight
+    body: JSON.stringify(payload),
+  }).then(()=>{
+    // no-cors gives an opaque response, so we can't truly confirm — retry queue on next flush anyway
+  }).catch(()=>{
+    queueLocally(payload);
+  });
+  flushQueueSoon();
+}
+function flushQueue(){
+  if(!navigator.onLine) return;
+  if(!CONFIG.SUBMIT_URL || CONFIG.SUBMIT_URL.indexOf("PASTE_YOUR") === 0) return;
+  const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  if(q.length === 0) return;
+  const remaining = [...q];
+  localStorage.setItem(QUEUE_KEY, JSON.stringify([]));
+  remaining.forEach(payload=>{
+    fetch(CONFIG.SUBMIT_URL, { method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(payload) })
+      .catch(()=> queueLocally(payload));
+  });
+  updateNetPill();
+}
+function flushQueueSoon(){ setTimeout(flushQueue, 4000); }
+function updateNetPill(){
+  const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  const pill = document.getElementById("net-pill");
+  const text = document.getElementById("net-pill-text");
+  if(q.length > 0){
+    text.textContent = q.length + " response" + (q.length>1?"s":"") + " saved on device — will sync";
+    pill.classList.add("show");
+  } else {
+    pill.classList.remove("show");
+  }
+}
+window.addEventListener("online", flushQueue);
+setInterval(flushQueue, 60000);
+updateNetPill();
+
+/* ---- idle / start ---- */
+document.getElementById("btn-start").addEventListener("click", ()=>{
+  resetState();
+  show("clienttype");
+});
+
+/* Safety auto-reset: if a visit is abandoned mid-flow, return to idle after IDLE_RESET_AFTER of no taps */
+let idleTimer = null;
+function armIdleReset(){
+  clearTimeout(idleTimer);
+  const idleScreen = document.getElementById("screen-idle");
+  if(idleScreen.classList.contains("active")) return;
+  idleTimer = setTimeout(()=>{ resetState(); show("idle"); }, CONFIG.IDLE_RESET_AFTER);
+}
+document.addEventListener("click", armIdleReset);
+
+/* register service worker for offline app-shell caching */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  });
+}
+
+show("idle");
+</script>
+</body>
+</html>
