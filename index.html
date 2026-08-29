@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&family=Alegreya:wght@500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   /* ============================================================
      CO ANTIQUE FEEDBACK KIOSK
@@ -41,7 +41,6 @@
     overflow:hidden; position:fixed; inset:0;
     display:flex; align-items:center; justify-content:center;
   }
-  .wordmark{font-family:'Alegreya',serif;}
 
   /* ---------- wavy brand frame (top/bottom) ---------- */
   .wave{position:fixed; left:0; right:0; width:100%; height:9vh; min-height:56px; max-height:110px; z-index:5; pointer-events:none;}
@@ -56,12 +55,13 @@
   }
   .screen{
     position:absolute; inset:0;
-    display:none; flex-direction:column; align-items:center; justify-content:center;
+    display:none; flex-direction:column; align-items:center; justify-content:safe center;
     padding: calc(9vh + var(--safe-top) + 18px) 6vw calc(9vh + var(--safe-bottom) + 18px);
     text-align:center;
     background:var(--cream);
     opacity:0; transform:translateY(14px);
     transition:opacity .28s ease, transform .28s ease;
+    overflow-y:auto;
   }
   .screen.active{display:flex;}
   .screen.show{opacity:1; transform:translateY(0);}
@@ -71,7 +71,7 @@
     font-size:clamp(12px,1.6vw,15px); color:var(--red); margin:0 0 10px;
   }
   h1.title{
-    font-family:'Alegreya',serif; font-weight:800; color:var(--navy);
+    font-family:'Public Sans',system-ui,sans-serif; font-weight:800; color:var(--navy);
     font-size:clamp(26px,4.4vw,46px); line-height:1.15; margin:0 0 6px;
   }
   p.sub{ color:var(--ink-soft); font-size:clamp(14px,1.9vw,19px); margin:0 0 26px; max-width:56ch;}
@@ -84,15 +84,15 @@
 
   /* grid of big tap tiles */
   .tiles{
-    display:grid; gap:16px; width:100%; max-width:1000px;
+    display:grid; gap:10px; width:100%; max-width:900px;
     grid-template-columns:repeat(var(--cols,2), 1fr);
   }
   .tile{
-    background:#fff; border:2px solid #EFE6C8; border-radius:20px;
-    padding:22px 18px; font-size:clamp(16px,2vw,20px); font-weight:700; color:var(--navy);
+    background:#fff; border:2px solid #EFE6C8; border-radius:16px;
+    padding:12px 14px; font-size:clamp(13px,1.4vw,16px); font-weight:700; color:var(--navy);
     cursor:pointer; box-shadow:0 2px 0 rgba(15,27,99,.05);
     transition:transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
-    line-height:1.3; min-height:84px; display:flex; align-items:center; justify-content:center;
+    line-height:1.25; min-height:56px; display:flex; align-items:center; justify-content:center;
   }
   .tile:active{transform:scale(.96); background:var(--cream-2);}
   .tile.selected{background:var(--navy); color:#fff; border-color:var(--navy);}
@@ -140,7 +140,7 @@
   #screen-idle .wordmark{color:#fff; font-size:clamp(30px,5vw,54px); font-weight:800; margin:0;}
   #screen-idle .tagline{color:#DCE0F5; font-size:clamp(15px,2.2vw,22px); margin:10px 0 34px;}
   .pulse-btn{
-    background:var(--gold); color:var(--navy-dark); font-family:'Alegreya',serif; font-weight:800;
+    background:var(--gold); color:var(--navy-dark); font-family:'Public Sans',system-ui,sans-serif; font-weight:800;
     font-size:clamp(20px,3vw,30px); border:none; border-radius:999px; padding:20px 56px;
     cursor:pointer; animation:pulse 2.2s ease-in-out infinite;
   }
@@ -208,7 +208,7 @@
   <section class="screen" id="screen-subservice">
     <p class="eyebrow">Step 2 of 5</p>
     <h1 class="title" id="subservice-title">Which one, specifically?</h1>
-    <div class="tiles" id="tiles-subservice" style="--cols:1"></div>
+    <div class="tiles" id="tiles-subservice" style="--cols:2"></div>
   </section>
 
   <!-- DEMOGRAPHICS: SEX -->
@@ -301,13 +301,16 @@ const CONFIG = {
 
   OFFICE: "CO - Antique",
 
-  // Placeholder — replace with real window numbers / staff nicknames.
-  RECOGNIZE_OPTIONS: ["Window 1", "Window 2", "Window 3", "Releasing Window"],
+  // Windows currently in use at CO Antique (Window 1, 12, 13 not utilized as of now).
+  // Swap in real staff nicknames later — this is still just window numbers for now.
+  RECOGNIZE_OPTIONS: ["Window 2","Window 3","Window 4","Window 5","Window 6","Window 7","Window 8","Window 9","Window 10","Window 11","Window 14","Releasing Window"],
 
   // How long the "Thank you" screen shows before resetting to idle (ms)
   DONE_DELAY: 3200,
-  // How long an idle screen waits with no input before it's considered "idle" again (ms) — safety reset
-  IDLE_RESET_AFTER: 90000,
+  // How long the kiosk waits with no taps mid-survey before assuming the
+  // visit was abandoned and resetting to the welcome screen (ms) — a safety
+  // net so one person's half-finished survey doesn't block the next visitor.
+  IDLE_RESET_AFTER: 120000,
 };
 
 /* ============================================================
