@@ -99,6 +99,21 @@
   .tile.chip{border-radius:999px; min-height:auto; padding:16px 22px; font-size:clamp(14px,1.7vw,17px);}
   .tile.wide{grid-column:1/-1;}
 
+  /* free-text screens: name, contact info, exact age */
+  .text-input{
+    width:100%; max-width:520px; font-family:inherit; font-size:clamp(18px,2.4vw,24px); font-weight:600;
+    color:var(--navy); background:#fff; border:2px solid #EFE6C8; border-radius:16px;
+    padding:16px 20px; text-align:center; margin-bottom:6px;
+  }
+  .text-input:focus{outline:none; border-color:var(--gold);}
+  .text-input.narrow{max-width:220px;}
+
+  /* data-privacy consent checkbox (Name/Contact screen only) */
+  .consent{display:flex; gap:10px; align-items:flex-start; max-width:520px; text-align:left; margin:16px 0 4px;}
+  .consent input[type="checkbox"]{width:26px; height:26px; flex:none; margin-top:2px; accent-color:var(--navy); cursor:pointer;}
+  .consent span{font-size:clamp(11px,1.3vw,13px); color:var(--ink-soft); line-height:1.4;}
+  .btn[disabled]{opacity:.4; pointer-events:none;}
+
   /* rating row (emoji faces) */
   .statement-card{
     background:#fff; border-radius:22px; padding:26px clamp(18px,4vw,40px);
@@ -149,6 +164,15 @@
   /* thank you */
   #screen-done .checkmark{font-size:clamp(60px,9vw,96px); margin-bottom:6px;}
 
+  /* small build-version watermark — idle + done screens only, kept subtle */
+  .version-tag{
+    position:absolute; right:16px; bottom:calc(9vh + var(--safe-bottom) + 10px);
+    font-size:10px; font-weight:600; letter-spacing:.03em;
+    opacity:.45; pointer-events:none; white-space:nowrap; z-index:2;
+  }
+  #screen-idle .version-tag{color:#DCE0F5;}
+  #screen-done .version-tag{color:var(--ink-soft);}
+
   /* offline / status pill */
   #net-pill{
     position:fixed; top:calc(9vh + var(--safe-top) + 10px); right:16px; z-index:20;
@@ -188,6 +212,7 @@
     <p class="wordmark">CO Antique</p>
     <p class="tagline">How was your visit today?</p>
     <button class="pulse-btn" id="btn-start">Tap to Begin</button>
+    <div class="version-tag">PRE-RELEASE / BETA &middot; Developed by LPD</div>
   </section>
 
   <!-- CLIENT TYPE -->
@@ -211,6 +236,23 @@
     <div class="tiles" id="tiles-subservice" style="--cols:2"></div>
   </section>
 
+  <!-- CLIENT INFO: NAME + CONTACT (with Data Privacy consent) -->
+  <section class="screen" id="screen-clientinfo">
+    <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
+    <h1 class="title">Want to leave your name?</h1>
+    <p class="sub">Totally optional — tap Skip if you'd rather not say.</p>
+    <input type="text" class="text-input" id="input-name" placeholder="Name" maxlength="80" autocomplete="off">
+    <input type="text" class="text-input" id="input-contact" placeholder="Phone or email" maxlength="80" autocomplete="off">
+    <label class="consent">
+      <input type="checkbox" id="consent-check">
+      <span>By checking this box, I consent to CO Antique &ndash; DFA Antique collecting and using the name and contact details I provide above, solely to acknowledge and follow up on my feedback, in accordance with the Data Privacy Act of 2012 (RA 10173).</span>
+    </label>
+    <div class="row-actions">
+      <button class="btn ghost" data-skip="clientinfo">Skip this</button>
+      <button class="btn gold" id="btn-clientinfo-next" disabled>Continue</button>
+    </div>
+  </section>
+
   <!-- DEMOGRAPHICS: SEX -->
   <section class="screen" id="screen-sex">
     <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
@@ -220,12 +262,24 @@
     <div class="row-actions"><button class="btn ghost" data-skip="sex">Skip this</button></div>
   </section>
 
-  <!-- DEMOGRAPHICS: AGE -->
+  <!-- DEMOGRAPHICS: AGE RANGE -->
   <section class="screen" id="screen-age">
     <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
     <h1 class="title">Age range</h1>
     <div class="tiles" id="tiles-age" style="--cols:3"></div>
     <div class="row-actions"><button class="btn ghost" data-skip="age">Skip this</button></div>
+  </section>
+
+  <!-- DEMOGRAPHICS: EXACT AGE -->
+  <section class="screen" id="screen-age-exact">
+    <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
+    <h1 class="title">Your exact age?</h1>
+    <p class="sub">Totally optional — tap Skip if you'd rather not say.</p>
+    <input type="tel" inputmode="numeric" class="text-input narrow" id="input-age-exact" placeholder="Age" maxlength="3" autocomplete="off">
+    <div class="row-actions">
+      <button class="btn ghost" data-skip="age-exact">Skip this</button>
+      <button class="btn gold" id="btn-age-exact-next">Continue</button>
+    </div>
   </section>
 
   <!-- DEMOGRAPHICS: REGION -->
@@ -272,6 +326,7 @@
     <div class="checkmark">✅</div>
     <h1 class="title">Salamat! Thank you!</h1>
     <p class="sub">Your feedback helps CO Antique serve you better.</p>
+    <div class="version-tag">PRE-RELEASE / BETA &middot; Developed by LPD</div>
   </section>
 
 </div>
@@ -293,7 +348,7 @@
    ============================================================ */
 const CONFIG = {
   // Paste the Apps Script "Web app" URL here once deployed (see code.gs / SETUP.md)
-  SUBMIT_URL: "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE",
+  SUBMIT_URL: "https://script.google.com/macros/s/AKfycbwxV3GF-jBrfhL6kW5eAiHXajP3cdg3iQOWCudqMko2c4MBD2qvDMC7MWLy0Pzf4cPb/exec",
 
   // Label this tablet so submissions show which unit they came from.
   // e.g. "Main-Tablet-1", "Main-Tablet-2", "Releasing-Tablet"
@@ -363,14 +418,24 @@ let state = {};
 function resetState(){
   state = {
     clientType:null, category:null, subService:null,
-    sex:null, age:null, region:null,
+    name:"", contact:"",
+    sex:null, age:null, ageExact:"", region:null,
     ratings:{}, chips:[], otherText:"", recognize:[],
     startedAt:null,
   };
+  // clear any typed text left over from a previous (or abandoned) visit
+  ["input-name","input-contact","input-age-exact"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = "";
+  });
+  const consentEl = document.getElementById("consent-check");
+  const clientInfoNextEl = document.getElementById("btn-clientinfo-next");
+  if(consentEl) consentEl.checked = false;
+  if(clientInfoNextEl) clientInfoNextEl.disabled = true;
 }
 resetState();
 
-const screens = ["idle","clienttype","category","subservice","sex","age","region","rating","comments","recognize","done"];
+const screens = ["idle","clienttype","category","subservice","clientinfo","sex","age","age-exact","region","rating","comments","recognize","done"];
 function show(name){
   screens.forEach(s=>{
     const el = document.getElementById("screen-"+s);
@@ -403,7 +468,7 @@ Object.keys(SERVICES).forEach(cat=>{
   tilesCategory.appendChild(tile(cat, ()=>{
     state.category = cat;
     const subs = SERVICES[cat];
-    if(subs.length === 1){ state.subService = subs[0]; show("sex"); }
+    if(subs.length === 1){ state.subService = subs[0]; show("clientinfo"); }
     else { renderSubServices(cat); show("subservice"); }
   }));
 });
@@ -413,18 +478,35 @@ function renderSubServices(cat){
   const wrap = document.getElementById("tiles-subservice");
   wrap.innerHTML = "";
   SERVICES[cat].forEach(s=>{
-    wrap.appendChild(tile(s, ()=>{ state.subService = s; show("sex"); }));
+    wrap.appendChild(tile(s, ()=>{ state.subService = s; show("clientinfo"); }));
   });
 }
 
-/* ---- Step 3: demographics ---- */
+/* ---- Step 3: client info (name/contact, gated by consent) + demographics ---- */
+const consentCheck = document.getElementById("consent-check");
+const btnClientInfoNext = document.getElementById("btn-clientinfo-next");
+consentCheck.addEventListener("change", ()=>{ btnClientInfoNext.disabled = !consentCheck.checked; });
+
+btnClientInfoNext.addEventListener("click", ()=>{
+  state.name = document.getElementById("input-name").value.trim();
+  state.contact = document.getElementById("input-contact").value.trim();
+  show("sex");
+});
+document.querySelector('[data-skip="clientinfo"]').addEventListener("click", ()=> show("sex"));
+
 const tilesSex = document.getElementById("tiles-sex");
 SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; show("age"); })));
 document.querySelector('[data-skip="sex"]').addEventListener("click", ()=> show("age"));
 
 const tilesAge = document.getElementById("tiles-age");
-AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; show("region"); })));
-document.querySelector('[data-skip="age"]').addEventListener("click", ()=> show("region"));
+AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; show("age-exact"); })));
+document.querySelector('[data-skip="age"]').addEventListener("click", ()=> show("age-exact"));
+
+document.getElementById("btn-age-exact-next").addEventListener("click", ()=>{
+  state.ageExact = document.getElementById("input-age-exact").value.trim();
+  show("region");
+});
+document.querySelector('[data-skip="age-exact"]').addEventListener("click", ()=> show("region"));
 
 const tilesRegion = document.getElementById("tiles-region");
 REGION_OPTIONS.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); })));
@@ -549,8 +631,11 @@ function buildPayload(){
     clientType: state.clientType,
     serviceCategory: state.category,
     subService: state.subService,
+    name: state.name,
+    contact: state.contact,
     sex: state.sex,
     ageRange: state.age,
+    ageExact: state.ageExact,
     region: state.region,
     ratings: state.ratings,
     sentiment: state.sentiment,
