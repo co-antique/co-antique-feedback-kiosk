@@ -182,6 +182,15 @@
   #net-pill.show{display:flex;}
   #net-pill .dot{width:8px;height:8px;border-radius:50%; background:var(--gold);}
 
+  /* back button — hidden on idle/done, and on the very first step */
+  #btn-back{
+    position:fixed; top:calc(9vh + var(--safe-top) + 10px); left:16px; z-index:20;
+    background:rgba(15,27,99,.08); color:var(--navy); font-family:inherit; font-weight:800; font-size:14px;
+    border:none; padding:10px 18px 10px 14px; border-radius:999px; display:none; align-items:center; gap:6px; cursor:pointer;
+  }
+  #btn-back.show{display:flex;}
+  #btn-back:active{transform:scale(.95);}
+
   /* small keyboard overlay for the one optional free-text field */
   #overlay-text{
     position:fixed; inset:0; z-index:30; background:rgba(10,18,63,.55);
@@ -203,6 +212,7 @@
 <div class="wave bottom"><svg viewBox="0 0 1440 100" preserveAspectRatio="none"><path d="M0,60 C 200,110 350,0 620,30 C 900,62 1050,10 1440,55 L1440,0 L0,0 Z" fill="#0F1B63"/><path d="M0,72 C 220,118 380,20 640,46 C 920,74 1060,26 1440,68 L1440,100 L0,100 Z" fill="#9C0D10"/><path d="M0,86 C 240,120 400,44 660,62 C 940,84 1070,46 1440,80 L1440,100 L0,100 Z" fill="#D4AF37"/></svg></div>
 
 <div id="net-pill"><span class="dot"></span><span id="net-pill-text">Saved on device — will sync</span></div>
+<button id="btn-back">&larr; Back</button>
 
 <div id="app">
 
@@ -432,10 +442,15 @@ function resetState(){
   const clientInfoNextEl = document.getElementById("btn-clientinfo-next");
   if(consentEl) consentEl.checked = false;
   if(clientInfoNextEl) clientInfoNextEl.disabled = true;
+  historyStack = [];
 }
+let historyStack = [];
 resetState();
 
 const screens = ["idle","clienttype","category","subservice","clientinfo","sex","age","age-exact","region","rating","comments","recognize","done"];
+function currentScreen(){
+  return screens.find(s => document.getElementById("screen-"+s).classList.contains("active"));
+}
 function show(name){
   screens.forEach(s=>{
     const el = document.getElementById("screen-"+s);
@@ -446,7 +461,41 @@ function show(name){
     el.classList.remove("show");
     requestAnimationFrame(()=> el.classList.add("show"));
   });
+  updateBackButton();
 }
+
+// goTo() is for moving FORWARD through the flow — it remembers where you
+// came from so the Back button can undo it. show() itself stays a plain
+// "just display this screen" primitive (used for idle/done/reset, and by
+// goBack() once it has already figured out where to land).
+function goTo(name){
+  const cur = currentScreen();
+  if(cur && cur !== name) historyStack.push(cur);
+  show(name);
+}
+function goBack(){
+  const onRating = currentScreen() === "rating";
+  if(onRating && ratingIndex > 0){
+    ratingIndex--;
+    renderRating();
+    return;
+  }
+  const prev = historyStack.pop();
+  if(!prev) return;
+  if(prev === "rating"){
+    ratingIndex = STATEMENTS.length - 1;
+    renderRating();
+  }
+  show(prev);
+}
+function updateBackButton(){
+  const btn = document.getElementById("btn-back");
+  const cur = currentScreen();
+  const hiddenOn = (cur === "idle" || cur === "done");
+  const canGoBack = !hiddenOn && (historyStack.length > 0 || (cur === "rating" && ratingIndex > 0));
+  btn.classList.toggle("show", canGoBack);
+}
+document.getElementById("btn-back").addEventListener("click", goBack);
 
 function tile(label, onTap, extraClass){
   const b = document.createElement("button");
@@ -459,7 +508,7 @@ function tile(label, onTap, extraClass){
 /* ---- Step 1: client type ---- */
 const tilesClientType = document.getElementById("tiles-clienttype");
 CLIENT_TYPES.forEach(ct=>{
-  tilesClientType.appendChild(tile(ct, ()=>{ state.clientType = ct; state.startedAt = new Date(); show("category"); }));
+  tilesClientType.appendChild(tile(ct, ()=>{ state.clientType = ct; state.startedAt = new Date(); goTo("category"); }));
 });
 
 /* ---- Step 2: category ---- */
@@ -468,8 +517,8 @@ Object.keys(SERVICES).forEach(cat=>{
   tilesCategory.appendChild(tile(cat, ()=>{
     state.category = cat;
     const subs = SERVICES[cat];
-    if(subs.length === 1){ state.subService = subs[0]; show("clientinfo"); }
-    else { renderSubServices(cat); show("subservice"); }
+    if(subs.length === 1){ state.subService = subs[0]; goTo("clientinfo"); }
+    else { renderSubServices(cat); goTo("subservice"); }
   }));
 });
 
@@ -478,7 +527,7 @@ function renderSubServices(cat){
   const wrap = document.getElementById("tiles-subservice");
   wrap.innerHTML = "";
   SERVICES[cat].forEach(s=>{
-    wrap.appendChild(tile(s, ()=>{ state.subService = s; show("clientinfo"); }));
+    wrap.appendChild(tile(s, ()=>{ state.subService = s; goTo("clientinfo"); }));
   });
 }
 
@@ -490,23 +539,23 @@ consentCheck.addEventListener("change", ()=>{ btnClientInfoNext.disabled = !cons
 btnClientInfoNext.addEventListener("click", ()=>{
   state.name = document.getElementById("input-name").value.trim();
   state.contact = document.getElementById("input-contact").value.trim();
-  show("sex");
+  goTo("sex");
 });
-document.querySelector('[data-skip="clientinfo"]').addEventListener("click", ()=> show("sex"));
+document.querySelector('[data-skip="clientinfo"]').addEventListener("click", ()=> goTo("sex"));
 
 const tilesSex = document.getElementById("tiles-sex");
-SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; show("age"); })));
-document.querySelector('[data-skip="sex"]').addEventListener("click", ()=> show("age"));
+SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; goTo("age"); })));
+document.querySelector('[data-skip="sex"]').addEventListener("click", ()=> goTo("age"));
 
 const tilesAge = document.getElementById("tiles-age");
-AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; show("age-exact"); })));
-document.querySelector('[data-skip="age"]').addEventListener("click", ()=> show("age-exact"));
+AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; goTo("age-exact"); })));
+document.querySelector('[data-skip="age"]').addEventListener("click", ()=> goTo("age-exact"));
 
 document.getElementById("btn-age-exact-next").addEventListener("click", ()=>{
   state.ageExact = document.getElementById("input-age-exact").value.trim();
-  show("region");
+  goTo("region");
 });
-document.querySelector('[data-skip="age-exact"]').addEventListener("click", ()=> show("region"));
+document.querySelector('[data-skip="age-exact"]').addEventListener("click", ()=> goTo("region"));
 
 const tilesRegion = document.getElementById("tiles-region");
 REGION_OPTIONS.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); })));
@@ -514,7 +563,7 @@ document.querySelector('[data-skip="region"]').addEventListener("click", ()=> st
 
 /* ---- Step 4: 12 ratings, one at a time ---- */
 let ratingIndex = 0;
-function startRatings(){ ratingIndex = 0; show("rating"); renderRating(); }
+function startRatings(){ ratingIndex = 0; goTo("rating"); renderRating(); }
 
 function renderRating(){
   const st = STATEMENTS[ratingIndex];
@@ -573,7 +622,7 @@ function startComments(){
   other.id = "chip-other";
   wrap.appendChild(other);
 
-  show("comments");
+  goTo("comments");
 }
 function toggleChip(label, btn){
   const i = state.chips.indexOf(label);
@@ -604,7 +653,7 @@ function startRecognize(){
   CONFIG.RECOGNIZE_OPTIONS.forEach(label=>{
     wrap.appendChild(tile(label, function(){ toggleRecognize(label, this); }, "chip"));
   });
-  show("recognize");
+  goTo("recognize");
 }
 function toggleRecognize(label, btn){
   const i = state.recognize.indexOf(label);
