@@ -3,13 +3,14 @@
    Submissions themselves are queued in localStorage by index.html,
    not here — this only caches the static files that make up the UI. */
 
-const CACHE_NAME = "co-antique-kiosk-v2";
+const CACHE_NAME = "co-antique-kiosk-v3";
 const SHELL_FILES = [
   "./",
   "./index.html",
   "./manifest.json",
   "./dfa-seal-color.png",
   "./dfa-seal-mono.png",
+  "./bagong-pilipinas-logo.png",
   "./icon-192.png",
   "./icon-512.png",
 ];

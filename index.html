@@ -42,11 +42,20 @@
     display:flex; align-items:center; justify-content:center;
   }
 
-  /* ---------- wavy brand frame (top/bottom) ---------- */
-  .wave{position:fixed; left:0; right:0; width:100%; height:9vh; min-height:56px; max-height:110px; z-index:5; pointer-events:none;}
+  /* ---------- wavy brand frame (top/bottom) ----------
+     Traced from CO Antique's actual signage swooshes (not a generic
+     curve) — each band is base color + a ribbon + a small rectangular
+     "window" notch, matching the real artwork. Slight continuous drift
+     keeps the idle screen feeling alive without being distracting. */
+  .wave{position:fixed; left:0; right:0; width:100%; height:9vh; min-height:56px; max-height:110px; z-index:5; pointer-events:none; overflow:hidden;}
   .wave.top{top:0;}
   .wave.bottom{bottom:0; transform:scaleY(-1);}
-  .wave svg{width:100%; height:100%; display:block;}
+  .wave svg{position:absolute; top:0; left:-6%; width:112%; height:100%; display:block;}
+  .wave.top svg{animation:waveDriftA 46s ease-in-out infinite;}
+  .wave.bottom svg{animation:waveDriftB 58s ease-in-out infinite;}
+  @keyframes waveDriftA{0%,100%{transform:translateX(0);} 50%{transform:translateX(-5.5%);}}
+  @keyframes waveDriftB{0%,100%{transform:translateX(0);} 50%{transform:translateX(5%);}}
+  @media (prefers-reduced-motion: reduce){ .wave svg{animation:none;} }
 
   /* ---------- app shell ---------- */
   #app{
@@ -151,7 +160,9 @@
 
   /* idle / welcome screen */
   #screen-idle{background:var(--navy); cursor:pointer;}
-  #screen-idle .seal{width:clamp(90px,14vw,150px); height:auto; margin-bottom:18px; filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));}
+  #screen-idle .seal-row{display:flex; align-items:center; justify-content:center; gap:22px; margin-bottom:18px;}
+  #screen-idle .seal{width:clamp(90px,14vw,150px); height:auto; margin-bottom:0; filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));}
+  #screen-idle .bp-logo{width:clamp(55px,8vw,90px); height:auto; filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));}
   #screen-idle .wordmark{color:#fff; font-size:clamp(30px,5vw,54px); font-weight:800; margin:0;}
   #screen-idle .tagline{color:#DCE0F5; font-size:clamp(15px,2.2vw,22px); margin:10px 0 34px;}
   .pulse-btn{
@@ -208,8 +219,25 @@
 </head>
 <body>
 
-<div class="wave top"><svg viewBox="0 0 1440 100" preserveAspectRatio="none"><path d="M0,60 C 200,110 350,0 620,30 C 900,62 1050,10 1440,55 L1440,0 L0,0 Z" fill="#0F1B63"/><path d="M0,72 C 220,118 380,20 640,46 C 920,74 1060,26 1440,68 L1440,100 L0,100 Z" fill="#9C0D10"/><path d="M0,86 C 240,120 400,44 660,62 C 940,84 1070,46 1440,80 L1440,100 L0,100 Z" fill="#D4AF37"/></svg></div>
-<div class="wave bottom"><svg viewBox="0 0 1440 100" preserveAspectRatio="none"><path d="M0,60 C 200,110 350,0 620,30 C 900,62 1050,10 1440,55 L1440,0 L0,0 Z" fill="#0F1B63"/><path d="M0,72 C 220,118 380,20 640,46 C 920,74 1060,26 1440,68 L1440,100 L0,100 Z" fill="#9C0D10"/><path d="M0,86 C 240,120 400,44 660,62 C 940,84 1070,46 1440,80 L1440,100 L0,100 Z" fill="#D4AF37"/></svg></div>
+<!-- Top band: traced from the signage's downward-dipping ribbon (gold field, red
+     ribbon dipping low center, navy base) plus its small "window" notch on the right. -->
+<div class="wave top"><svg viewBox="0 0 1440 100" preserveAspectRatio="none">
+  <rect x="0" y="4" width="1440" height="96" fill="#D4AF37"/>
+  <path d="M0,33 C 260,70 400,82 720,75 C 1000,68 1250,34 1440,21 L1440,100 L0,100 Z" fill="#0F1B63"/>
+  <path d="M0,20 C 260,55 400,68 720,62 C 1000,56 1250,20 1440,8 L1440,21 C 1250,34 1000,68 720,75 C 400,82 260,70 0,33 Z" fill="#9C0D10"/>
+  <rect x="1123" y="18" width="159" height="40" fill="#0F1B63"/>
+  <path d="M0,4 C 320,2 620,5 760,3 C 980,1 1220,4 1440,2 L1440,0 L0,0 Z" fill="#9C0D10"/>
+</svg></div>
+<!-- Bottom band: traced from the signage's arching ribbon (navy base, red ribbon
+     arching up center, gold field) plus its raised gold "window" step. Reuses
+     the top band's outer-edge-at-top authoring convention; the CSS scaleY(-1)
+     on .wave.bottom flips it so navy still lands on the true screen edge. -->
+<div class="wave bottom"><svg viewBox="0 0 1440 100" preserveAspectRatio="none">
+  <rect x="0" y="0" width="1440" height="100" fill="#0F1B63"/>
+  <path d="M0,68 C 220,74 320,40 400,21 C 480,40 900,58 1440,55 L1440,100 L0,100 Z" fill="#D4AF37"/>
+  <path d="M0,55 C 220,61 320,27 400,8 C 480,27 900,45 1440,42 L1440,55 C 900,58 480,40 400,21 C 320,40 220,74 0,68 Z" fill="#9C0D10"/>
+  <path d="M760,38 L1040,38 L1040,100 L760,100 Z" fill="#D4AF37"/>
+</svg></div>
 
 <div id="net-pill"><span class="dot"></span><span id="net-pill-text">Saved on device — will sync</span></div>
 <button id="btn-back">&larr; Back</button>
@@ -218,7 +246,10 @@
 
   <!-- IDLE -->
   <section class="screen active" id="screen-idle">
-    <img class="seal" src="dfa-seal-color.png" alt="DFA Seal">
+    <div class="seal-row">
+      <img class="seal" src="dfa-seal-color.png" alt="DFA Seal">
+      <img class="bp-logo" src="bagong-pilipinas-logo.png" alt="Bagong Pilipinas">
+    </div>
     <p class="wordmark">CO Antique</p>
     <p class="tagline">How was your visit today?</p>
     <button class="pulse-btn" id="btn-start">Tap to Begin</button>
