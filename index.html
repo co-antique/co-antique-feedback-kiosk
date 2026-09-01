@@ -97,9 +97,32 @@
     opacity:0; transform:translateY(14px);
     transition:opacity .28s ease, transform .28s ease;
     overflow-y:auto; overscroll-behavior:none;
+    /* z-index:0 turns this into its own stacking context, so the watermark
+       below (z-index:-1) stays trapped behind THIS screen's own content
+       instead of escaping to sit behind the whole page/other fixed UI. */
+    z-index:0;
   }
   .screen.active{display:flex;}
   .screen.show{opacity:1; transform:translateY(0);}
+
+  /* Big centered DFA-seal watermark on every cream/beige screen (everything
+     except idle, which already carries the full-color seal + BP logo up top).
+     Sized to bleed past the top/bottom padding and overlap the wave bands —
+     that's deliberate branding, not a bug. Sits behind all real content
+     (z-index:-1, confined to .screen's own stacking context above) and never
+     intercepts taps (pointer-events:none). */
+  .screen::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:url('dfa-seal-mono.png');
+    background-repeat:no-repeat;
+    background-position:center;
+    background-size:min(80vh,85vw) auto;
+    opacity:.5;
+    pointer-events:none;
+    z-index:-1;
+  }
+  #screen-idle::before{content:none;}
 
   .eyebrow{
     font-weight:700; letter-spacing:.12em; text-transform:uppercase;
@@ -131,6 +154,11 @@
   }
   .tile:active{transform:scale(.96); background:var(--cream-2);}
   .tile.selected{background:var(--navy); color:#fff; border-color:var(--navy);}
+  /* Sex screen: pastel-tinted tiles instead of plain white, male=blue, female=pink */
+  .tile.tile-male{background:#DCEBFB; border-color:#B8D8F5;}
+  .tile.tile-male:active{background:#C7DEF7;}
+  .tile.tile-female{background:#FBDCEA; border-color:#F5B8D4;}
+  .tile.tile-female:active{background:#F7C7DE;}
   .tile.chip{border-radius:999px; min-height:auto; padding:16px 22px; font-size:clamp(14px,1.7vw,17px);}
   .tile.wide{grid-column:1/-1;}
 
@@ -671,7 +699,7 @@ btnClientInfoNext.addEventListener("click", ()=>{
 document.querySelector('[data-skip="clientinfo"]').addEventListener("click", ()=> goTo("sex"));
 
 const tilesSex = document.getElementById("tiles-sex");
-SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; goTo("age"); })));
+SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; goTo("age"); }, "tile-"+v.toLowerCase())));
 document.querySelector('[data-skip="sex"]').addEventListener("click", ()=> goTo("age"));
 
 const tilesAge = document.getElementById("tiles-age");
