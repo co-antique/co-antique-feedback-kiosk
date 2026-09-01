@@ -32,19 +32,14 @@
     --radius:    28px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    /* Wave band heights: locked to each source photo's real aspect ratio
-       (167/1920 and 191/1920, 2026-09-01 replacement art). The earlier
-       swoosh photos were tall/bulky (22.1vw/13.83vw) and needed a vh-based
-       cap to stop them eating the screen on a wide-short tablet — these
-       new ones are naturally short (8.7vw/9.95vw ≈ 111px/127px even on
-       the 1280px-wide tablet) so that vh cap has been removed: the band
-       just shows the photo at its true, uncropped proportions again. The
-       170px is only a safety ceiling for an unrealistically wide window,
-       never the normal governing number. Both .screen padding and the
-       corner UI below read these same variables so everything stays in
-       sync automatically. */
-    --wave-top-h: clamp(56px, 8.7vw, 170px);
-    --wave-bottom-h: clamp(56px, 9.95vw, 170px);
+    /* Wave band heights: pure vw, locked 1:1 to each source photo's real
+       aspect ratio (167/1920 and 191/1920, 2026-09-01 replacement art) with
+       no min/max cap at all — the band is always exactly the photo's true,
+       uncropped proportions at whatever width the screen is. Both .screen
+       padding and the corner UI below read these same variables so
+       everything stays in sync automatically. */
+    --wave-top-h: 8.7vw;
+    --wave-bottom-h: 9.95vw;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
   /* overscroll-behavior:none on both html and body is what actually stops a
