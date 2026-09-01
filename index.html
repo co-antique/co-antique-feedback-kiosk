@@ -122,7 +122,7 @@
        branding request, 2026-09-01 round 2). Background images clip to
        their own box automatically, so this never causes layout overflow. */
     background-size:min(150vh,160vw) auto;
-    opacity:.10;
+    opacity:.05;
     pointer-events:none;
     z-index:-1;
   }
@@ -163,6 +163,16 @@
   .tile.tile-male:active{background:#C7DEF7;}
   .tile.tile-female{background:#FBDCEA; border-color:#F5B8D4;}
   .tile.tile-female:active{background:#F7C7DE;}
+  /* A single standalone tile centered below a 2-col tile grid, sized to
+     match one grid cell exactly (same 900px max-width / 10px gap math as
+     .tiles) rather than stretching full-width or sitting left-aligned.
+     Used for "Prefer not to say" on the Sex screen. */
+  .tile-solo{display:flex; justify-content:center; width:100%; max-width:900px; margin:10px auto 0;}
+  .tile-solo .tile{width:calc((100% - 10px)/2);}
+  /* Neutral = blends into the page background, only the border marks it as
+     tappable — deliberately lower-emphasis than the pastel Male/Female tiles. */
+  .tile.tile-neutral{background:var(--cream); border-color:#D9D2B0;}
+  .tile.tile-neutral:active{background:var(--cream-2);}
   .tile.chip{border-radius:999px; min-height:auto; padding:16px 22px; font-size:clamp(14px,1.7vw,17px);}
   .tile.wide{grid-column:1/-1;}
 
@@ -178,6 +188,7 @@
   }
   .text-input:focus{outline:none; border-color:var(--gold);}
   .text-input.narrow{max-width:220px;}
+  select.text-input.select-input{text-align:left; -webkit-appearance:menulist; appearance:menulist;}
 
   /* data-privacy consent checkbox (Name/Contact screen only) */
   .consent{display:flex; gap:10px; align-items:flex-start; max-width:520px; text-align:left; margin:16px 0 4px;}
@@ -311,6 +322,15 @@
   #overlay-mention input:focus{outline:none; border-color:var(--gold);}
   #overlay-mention .row-actions{margin-top:16px;}
 
+  /* Region screen's "Other" dialog — same small-box pattern as overlay-mention */
+  #overlay-region{
+    position:fixed; inset:0; z-index:30; background:rgba(10,18,63,.55);
+    display:none; align-items:center; justify-content:center; padding:6vw;
+  }
+  #overlay-region.show{display:flex;}
+  #overlay-region .box{background:#fff; border-radius:20px; padding:22px; width:100%; max-width:300px; text-align:center;}
+  #overlay-region .row-actions{margin-top:16px;}
+
   /* staff-only panel — reached by a 3-second hold on the version-tag watermark
      (idle/done screens only), not shown or hinted at anywhere else. Lets whoever
      is servicing the kiosk exit fullscreen or reload without needing OS-level
@@ -396,9 +416,9 @@
   <section class="screen" id="screen-sex">
     <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
     <h1 class="title">Sex</h1>
-    <p class="sub">Totally optional — tap Skip if you'd rather not say.</p>
+    <p class="sub">Totally optional — tap "Prefer not to say" if you'd rather not answer.</p>
     <div class="tiles" id="tiles-sex" style="--cols:2"></div>
-    <div class="row-actions"><button class="btn ghost" data-skip="sex">Skip this</button></div>
+    <div class="tile-solo" id="tiles-sex-solo"></div>
   </section>
 
   <!-- DEMOGRAPHICS: AGE RANGE -->
@@ -406,19 +426,6 @@
     <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
     <h1 class="title">Age range</h1>
     <div class="tiles" id="tiles-age" style="--cols:3"></div>
-    <div class="row-actions"><button class="btn ghost" data-skip="age">Skip this</button></div>
-  </section>
-
-  <!-- DEMOGRAPHICS: EXACT AGE -->
-  <section class="screen" id="screen-age-exact">
-    <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
-    <h1 class="title">Your exact age?</h1>
-    <p class="sub">Totally optional — tap Skip if you'd rather not say.</p>
-    <input type="tel" inputmode="numeric" class="text-input narrow" id="input-age-exact" placeholder="Age" maxlength="3" autocomplete="off">
-    <div class="row-actions">
-      <button class="btn ghost" data-skip="age-exact">Skip this</button>
-      <button class="btn gold" id="btn-age-exact-next">Continue</button>
-    </div>
   </section>
 
   <!-- DEMOGRAPHICS: REGION -->
@@ -492,6 +499,17 @@
   </div>
 </div>
 
+<div id="overlay-region">
+  <div class="box">
+    <h1 class="title" style="font-size:18px;">Which region?</h1>
+    <select id="region-other-select" class="text-input select-input"></select>
+    <div class="row-actions">
+      <button class="btn ghost" id="btn-region-other-cancel">Cancel</button>
+      <button class="btn gold" id="btn-region-other-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="overlay-staff">
   <div class="box">
     <h1 class="title" style="font-size:20px;">Staff Options</h1>
@@ -536,15 +554,24 @@ const CONFIG = {
 const CLIENT_TYPES = ["General Public","Business","Government - DFA Employee","Government - Other Agency"];
 
 const SERVICES = {
-  "Passport": ["New Passport Application","Passport Renewal","Certification of Unclaimed Passport","Issuance of Passport Certification","Issuance of Convention Travel Document","Issuance of Official or Diplomatic Passport","Revalidation of Diplomatic or Official Passport","Other Passport-related services"],
+  "Passport": ["New Passport Application","Passport Renewal","Certificate of Unclaimed Passport","Issuance of Passport Certification","Issuance of Convention Travel Document","Issuance of Official or Diplomatic Passport","Revalidation of Diplomatic or Official Passport","Other Passport-related services"],
   "Authentication": ["Issuance of Authentication/Apostille","Issuance of Certification","Other Authentication-related services"],
   "Civil Registry": ["Report of Birth","Report of Marriage","Report of Death","Other Civil Registry-related services"],
   "Assistance-to-Nationals": ["Assistance-to-Nationals services"]
 };
 
 const SEX_OPTIONS = ["Male","Female"];
-const AGE_OPTIONS = ["Under 18","18–29","30–44","45–59","60+"];
-const REGION_OPTIONS = ["Antique (this province)","Elsewhere in Panay / Western Visayas","Other region, Philippines","Abroad / OFW"];
+// Matches the official Google Form's age brackets exactly (2026-09-01) —
+// "Prefer not to say" is its own tile, folded right into the grid (6 items
+// fits the existing 3-column layout evenly, no separate treatment needed).
+const AGE_OPTIONS = ["Under 18","18–34","35–44","45–64","65+","Prefer not to say"];
+// Region redesign (2026-09-01): Western Visayas first (home turf), then the
+// two other Visayas COs the DFA form itself groups CO Antique with (Region 7,
+// Region 8), then MIMAROPA (Panay's actual geographic neighbor across the
+// Sulu Sea/Cuyo Pass) and NCR (common for WV-born applicants now based in
+// Manila), then "Other" opens a dropdown of the remaining regions.
+const REGION_PRIMARY = ["Western Visayas","Central Visayas","Eastern Visayas","MIMAROPA","NCR"];
+const REGION_OTHER_LIST = ["Region 1","Region 2","Region 3","Region 4-A","Region 5","Region 9","Region 10","Region 11","Region 12","Region 13","BARMM","CAR"];
 
 // 12 statements: Citizen's Charter awareness (CC) + Service Quality Dimensions (SQD)
 const STATEMENTS = [
@@ -581,12 +608,12 @@ function resetState(){
   state = {
     clientType:null, category:null, subService:null,
     name:"", contact:"",
-    sex:null, age:null, ageExact:"", region:null,
+    sex:null, age:null, region:null,
     ratings:{}, chips:[], otherText:"", recognize:[], mentionText:"",
     startedAt:null,
   };
   // clear any typed text left over from a previous (or abandoned) visit
-  ["input-name","input-contact","input-age-exact"].forEach(id=>{
+  ["input-name","input-contact"].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = "";
   });
@@ -599,7 +626,7 @@ function resetState(){
 let historyStack = [];
 resetState();
 
-const screens = ["idle","clienttype","category","subservice","clientinfo","sex","age","age-exact","region","rating","comments","recognize","done"];
+const screens = ["idle","clienttype","category","subservice","clientinfo","sex","age","region","rating","comments","recognize","done"];
 function currentScreen(){
   return screens.find(s => document.getElementById("screen-"+s).classList.contains("active"));
 }
@@ -704,21 +731,32 @@ document.querySelector('[data-skip="clientinfo"]').addEventListener("click", ()=
 
 const tilesSex = document.getElementById("tiles-sex");
 SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; goTo("age"); }, "tile-"+v.toLowerCase())));
-document.querySelector('[data-skip="sex"]').addEventListener("click", ()=> goTo("age"));
+document.getElementById("tiles-sex-solo").appendChild(
+  tile("Prefer not to say", ()=>{ state.sex="Prefer not to say"; goTo("age"); }, "tile-neutral")
+);
 
 const tilesAge = document.getElementById("tiles-age");
-AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; goTo("age-exact"); })));
-document.querySelector('[data-skip="age"]').addEventListener("click", ()=> goTo("age-exact"));
-
-document.getElementById("btn-age-exact-next").addEventListener("click", ()=>{
-  state.ageExact = document.getElementById("input-age-exact").value.trim();
-  goTo("region");
-});
-document.querySelector('[data-skip="age-exact"]').addEventListener("click", ()=> goTo("region"));
+AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; goTo("region"); })));
 
 const tilesRegion = document.getElementById("tiles-region");
-REGION_OPTIONS.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); })));
+REGION_PRIMARY.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); })));
+tilesRegion.appendChild(tile("Other", ()=>{ document.getElementById("overlay-region").classList.add("show"); }));
 document.querySelector('[data-skip="region"]').addEventListener("click", ()=> startRatings());
+
+const regionOtherSelect = document.getElementById("region-other-select");
+REGION_OTHER_LIST.forEach(v=>{
+  const opt = document.createElement("option");
+  opt.value = v; opt.textContent = v;
+  regionOtherSelect.appendChild(opt);
+});
+document.getElementById("btn-region-other-save").addEventListener("click", ()=>{
+  state.region = regionOtherSelect.value;
+  document.getElementById("overlay-region").classList.remove("show");
+  startRatings();
+});
+document.getElementById("btn-region-other-cancel").addEventListener("click", ()=>{
+  document.getElementById("overlay-region").classList.remove("show");
+});
 
 /* ---- Step 4: 12 ratings, one at a time ---- */
 let ratingIndex = 0;
@@ -866,7 +904,6 @@ function buildPayload(){
     contact: state.contact,
     sex: state.sex,
     ageRange: state.age,
-    ageExact: state.ageExact,
     region: state.region,
     ratings: state.ratings,
     sentiment: state.sentiment,
