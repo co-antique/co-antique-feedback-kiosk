@@ -44,11 +44,17 @@
     --wave-bottom-h: clamp(56px, 13.83vw, 170px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
-  html,body{height:100%;}
+  /* overscroll-behavior:none on both html and body is what actually stops a
+     real touchscreen (this doesn't show up in a desktop-browser preview) from
+     rubber-band bouncing the whole page, or triggering Chrome's pull-to-refresh,
+     when someone drags rather than taps. overflow:hidden alone is not enough
+     on a real device — it only stops CONTENT from scrolling, not the browser's
+     own bounce/refresh gesture handling. */
+  html,body{height:100%; overflow:hidden; overscroll-behavior:none;}
   body{
     margin:0; background:var(--navy); color:var(--ink);
     font-family:'Public Sans',system-ui,sans-serif;
-    overflow:hidden; position:fixed; inset:0;
+    position:fixed; inset:0;
     display:flex; align-items:center; justify-content:center;
   }
 
@@ -86,7 +92,7 @@
     background:var(--cream);
     opacity:0; transform:translateY(14px);
     transition:opacity .28s ease, transform .28s ease;
-    overflow-y:auto;
+    overflow-y:auto; overscroll-behavior:none;
   }
   .screen.active{display:flex;}
   .screen.show{opacity:1; transform:translateY(0);}
@@ -123,6 +129,24 @@
   .tile.selected{background:var(--navy); color:#fff; border-color:var(--navy);}
   .tile.chip{border-radius:999px; min-height:auto; padding:16px 22px; font-size:clamp(14px,1.7vw,17px);}
   .tile.wide{grid-column:1/-1;}
+
+  /* Column-flow layout for screens with more than a couple options (age,
+     region, comment chips, recognize/window chips) — a column fills top to
+     bottom up to 4 buttons tall, then wraps into a new column beside it,
+     rather than one wide grid row or a loose wrap of variable-width pills.
+     Client type / category / sub-service / sex keep the original wider
+     2-column .tiles grid — they typically have few, short options and
+     didn't need this. */
+  .tiles-col{
+    display:flex; flex-direction:column; flex-wrap:wrap; align-content:center;
+    justify-content:flex-start; gap:10px; max-height:238px; width:100%;
+  }
+  .tile.col{
+    width:190px; height:52px; min-height:52px; flex:0 0 auto;
+    padding:6px 10px; border-radius:14px;
+    font-size:clamp(11px,1.15vw,13px); line-height:1.2;
+    overflow:hidden; text-align:center;
+  }
 
   /* free-text screens: name, contact info, exact age */
   .text-input{
@@ -195,9 +219,14 @@
   .version-tag{
     position:absolute; right:16px; bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 10px);
     font-size:10px; font-weight:600; letter-spacing:.03em;
-    opacity:.45; pointer-events:auto; white-space:nowrap; z-index:2;
-    /* pointer-events enabled (not "none" like a typical decorative watermark)
-       so the staff long-press gesture below can actually hit-test this
+    opacity:.45; pointer-events:auto; touch-action:none; white-space:nowrap; z-index:2;
+    /* touch-action:none stops a real finger's natural tremor during the
+       3-second hold from being interpreted as the start of a scroll/pan
+       gesture — on a real touchscreen (not a mouse) that misread fires
+       "pointercancel" and silently kills the hold before it completes.
+       This is why the staff panel worked with a desktop mouse but not on
+       an actual Android tablet. pointer-events enabled (not "none" like a
+       typical decorative watermark) so the gesture below can hit-test this
        element — it's still visually inert otherwise, nothing else here
        reacts to taps on it besides the 3-second hold. */
   }
@@ -233,6 +262,21 @@
     width:100%; min-height:120px; border-radius:14px; border:2px solid #EFE6C8; padding:14px;
     font-family:inherit; font-size:18px; resize:none; color:var(--ink);
   }
+
+  /* "mention someone" — smaller than the comments Other overlay above,
+     since this is one line (a name), not a paragraph. */
+  #overlay-mention{
+    position:fixed; inset:0; z-index:30; background:rgba(10,18,63,.55);
+    display:none; align-items:center; justify-content:center; padding:6vw;
+  }
+  #overlay-mention.show{display:flex;}
+  #overlay-mention .box{background:#fff; border-radius:20px; padding:22px; width:100%; max-width:300px; text-align:center;}
+  #overlay-mention input{
+    width:100%; border-radius:12px; border:2px solid #EFE6C8; padding:12px 14px;
+    font-family:inherit; font-size:16px; color:var(--ink); text-align:center;
+  }
+  #overlay-mention input:focus{outline:none; border-color:var(--gold);}
+  #overlay-mention .row-actions{margin-top:16px;}
 
   /* staff-only panel — reached by a 3-second hold on the version-tag watermark
      (idle/done screens only), not shown or hinted at anywhere else. Lets whoever
@@ -328,7 +372,7 @@
   <section class="screen" id="screen-age">
     <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
     <h1 class="title">Age range</h1>
-    <div class="tiles" id="tiles-age" style="--cols:3"></div>
+    <div class="tiles-col" id="tiles-age"></div>
     <div class="row-actions"><button class="btn ghost" data-skip="age">Skip this</button></div>
   </section>
 
@@ -348,7 +392,7 @@
   <section class="screen" id="screen-region">
     <p class="eyebrow">Step 3 of 5 &middot; Optional</p>
     <h1 class="title">Where are you currently residing?</h1>
-    <div class="tiles" id="tiles-region" style="--cols:2"></div>
+    <div class="tiles-col" id="tiles-region"></div>
     <div class="row-actions"><button class="btn ghost" data-skip="region">Skip this</button></div>
   </section>
 
@@ -364,7 +408,7 @@
     <p class="eyebrow">Step 5 of 5 &middot; Optional</p>
     <h1 class="title" id="comments-title">Anything you'd like to add?</h1>
     <p class="sub">Tap as many as apply. You can also skip this.</p>
-    <div class="chipwrap" id="chip-list"></div>
+    <div class="tiles-col" id="chip-list"></div>
     <div class="row-actions">
       <button class="btn ghost" id="btn-comments-skip">Skip</button>
       <button class="btn gold" id="btn-comments-next">Continue</button>
@@ -376,7 +420,7 @@
     <p class="eyebrow">Optional</p>
     <h1 class="title">Want to recognize someone who helped you?</h1>
     <p class="sub">Pick a window or name — you can choose more than one.</p>
-    <div class="chipwrap" id="recognize-list"></div>
+    <div class="tiles-col" id="recognize-list"></div>
     <div class="row-actions">
       <button class="btn ghost" id="btn-recognize-skip">Skip</button>
       <button class="btn gold" id="btn-recognize-next">Finish</button>
@@ -400,6 +444,17 @@
     <div class="row-actions">
       <button class="btn ghost" id="btn-other-cancel">Cancel</button>
       <button class="btn gold" id="btn-other-save">Add</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay-mention">
+  <div class="box">
+    <h1 class="title" style="font-size:18px;">Mention someone</h1>
+    <input type="text" id="mention-text" maxlength="60" placeholder="Their name" autocomplete="off">
+    <div class="row-actions">
+      <button class="btn ghost" id="btn-mention-cancel">Cancel</button>
+      <button class="btn gold" id="btn-mention-save">Save</button>
     </div>
   </div>
 </div>
@@ -494,7 +549,7 @@ function resetState(){
     clientType:null, category:null, subService:null,
     name:"", contact:"",
     sex:null, age:null, ageExact:"", region:null,
-    ratings:{}, chips:[], otherText:"", recognize:[],
+    ratings:{}, chips:[], otherText:"", recognize:[], mentionText:"",
     startedAt:null,
   };
   // clear any typed text left over from a previous (or abandoned) visit
@@ -619,7 +674,7 @@ SEX_OPTIONS.forEach(v=> tilesSex.appendChild(tile(v, ()=>{ state.sex=v; goTo("ag
 document.querySelector('[data-skip="sex"]').addEventListener("click", ()=> goTo("age"));
 
 const tilesAge = document.getElementById("tiles-age");
-AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; goTo("age-exact"); })));
+AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; goTo("age-exact"); }, "col")));
 document.querySelector('[data-skip="age"]').addEventListener("click", ()=> goTo("age-exact"));
 
 document.getElementById("btn-age-exact-next").addEventListener("click", ()=>{
@@ -629,7 +684,7 @@ document.getElementById("btn-age-exact-next").addEventListener("click", ()=>{
 document.querySelector('[data-skip="age-exact"]').addEventListener("click", ()=> goTo("region"));
 
 const tilesRegion = document.getElementById("tiles-region");
-REGION_OPTIONS.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); })));
+REGION_OPTIONS.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); }, "col")));
 document.querySelector('[data-skip="region"]').addEventListener("click", ()=> startRatings());
 
 /* ---- Step 4: 12 ratings, one at a time ---- */
@@ -686,10 +741,10 @@ function startComments(){
   const wrap = document.getElementById("chip-list");
   wrap.innerHTML = "";
   list.forEach(label=>{
-    const b = tile(label, function(){ toggleChip(label, this); }, "chip");
+    const b = tile(label, function(){ toggleChip(label, this); }, "col");
     wrap.appendChild(b);
   });
-  const other = tile("Other…", ()=>{ document.getElementById("overlay-text").classList.add("show"); }, "chip");
+  const other = tile("Other…", ()=>{ document.getElementById("overlay-text").classList.add("show"); }, "col");
   other.id = "chip-other";
   wrap.appendChild(other);
 
@@ -722,8 +777,11 @@ function startRecognize(){
   const wrap = document.getElementById("recognize-list");
   wrap.innerHTML = "";
   CONFIG.RECOGNIZE_OPTIONS.forEach(label=>{
-    wrap.appendChild(tile(label, function(){ toggleRecognize(label, this); }, "chip"));
+    wrap.appendChild(tile(label, function(){ toggleRecognize(label, this); }, "col"));
   });
+  const mention = tile("Mention someone", ()=>{ document.getElementById("overlay-mention").classList.add("show"); }, "col");
+  mention.id = "chip-mention";
+  wrap.appendChild(mention);
   goTo("recognize");
 }
 function toggleRecognize(label, btn){
@@ -733,6 +791,26 @@ function toggleRecognize(label, btn){
 }
 document.getElementById("btn-recognize-skip").addEventListener("click", finish);
 document.getElementById("btn-recognize-next").addEventListener("click", finish);
+
+document.getElementById("btn-mention-save").addEventListener("click", ()=>{
+  state.mentionText = document.getElementById("mention-text").value.trim();
+  document.getElementById("overlay-mention").classList.remove("show");
+  // Replace any previously-saved mention rather than stacking duplicates —
+  // there's only ever one "mention someone" entry per visit.
+  state.recognize = state.recognize.filter(v=> !v.startsWith("Mentioned: "));
+  const chip = document.getElementById("chip-mention");
+  if(state.mentionText){
+    state.recognize.push("Mentioned: " + state.mentionText);
+    chip.classList.add("selected");
+    chip.textContent = state.mentionText.slice(0,18) + (state.mentionText.length>18?"…":"");
+  } else {
+    chip.classList.remove("selected");
+    chip.textContent = "Mention someone";
+  }
+});
+document.getElementById("btn-mention-cancel").addEventListener("click", ()=>{
+  document.getElementById("overlay-mention").classList.remove("show");
+});
 
 /* ---- Finish: optimistic UI, submit in background ---- */
 function finish(){
