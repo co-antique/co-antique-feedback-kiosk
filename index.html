@@ -33,20 +33,18 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Wave band heights: locked to each source photo's real aspect ratio
-       (167/1920 and 191/1920, 2026-09-01 replacement art — a red-ribbon
-       wave over a navy field with a fully transparent bottom/top so the
-       page's own navy body shows through where the photo doesn't paint
-       anything) — via the vw term — so the art is never stretched on a
-       narrow/tall window. On a WIDE-and-SHORT real tablet (confirmed
-       1280x800 landscape) a pure vw value can still go oversized relative
-       to how much vertical room actually exists, so min() also caps it by
-       a share of the screen's actual HEIGHT, whichever is smaller — the
-       band always respects both the image's proportions and the screen's
-       real estate. The explicit 170px is just a safety ceiling for unusual
-       cases. Both .screen padding and the corner UI below read these same
-       variables so everything stays in sync automatically. */
-    --wave-top-h: clamp(56px, min(8.7vw, 12vh), 170px);
-    --wave-bottom-h: clamp(56px, min(9.95vw, 9vh), 170px);
+       (167/1920 and 191/1920, 2026-09-01 replacement art). The earlier
+       swoosh photos were tall/bulky (22.1vw/13.83vw) and needed a vh-based
+       cap to stop them eating the screen on a wide-short tablet — these
+       new ones are naturally short (8.7vw/9.95vw ≈ 111px/127px even on
+       the 1280px-wide tablet) so that vh cap has been removed: the band
+       just shows the photo at its true, uncropped proportions again. The
+       170px is only a safety ceiling for an unrealistically wide window,
+       never the normal governing number. Both .screen padding and the
+       corner UI below read these same variables so everything stays in
+       sync automatically. */
+    --wave-top-h: clamp(56px, 8.7vw, 170px);
+    --wave-bottom-h: clamp(56px, 9.95vw, 170px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
   /* overscroll-behavior:none on both html and body is what actually stops a
