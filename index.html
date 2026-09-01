@@ -33,20 +33,20 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Wave band heights: locked to each source photo's real aspect ratio
-       (548/2480 and 343/2480) — via the vw term — so the art is never
-       stretched on a narrow/tall window. But on a WIDE-and-SHORT real
-       tablet (confirmed 1280x800 landscape), a pure vw value goes way
-       oversized relative to how much vertical room actually exists — at
-       1280px wide, 22.1vw alone is 283px, nearly 3.5x the vh-based value
-       below, which is what was eating so much of the screen that the idle
-       page had to scroll. min() takes whichever constraint is SMALLER, so
-       the band always respects both the image's proportions AND the
-       screen's actual height, whichever is more restrictive. The explicit
-       170px is now just a safety ceiling for unusual cases, not the normal
-       governing number. Both .screen padding and the corner UI below read
-       these same variables so everything stays in sync automatically. */
-    --wave-top-h: clamp(56px, min(22.1vw, 9vh), 170px);
-    --wave-bottom-h: clamp(56px, min(13.83vw, 7vh), 170px);
+       (167/1920 and 191/1920, 2026-09-01 replacement art — a red-ribbon
+       wave over a navy field with a fully transparent bottom/top so the
+       page's own navy body shows through where the photo doesn't paint
+       anything) — via the vw term — so the art is never stretched on a
+       narrow/tall window. On a WIDE-and-SHORT real tablet (confirmed
+       1280x800 landscape) a pure vw value can still go oversized relative
+       to how much vertical room actually exists, so min() also caps it by
+       a share of the screen's actual HEIGHT, whichever is smaller — the
+       band always respects both the image's proportions and the screen's
+       real estate. The explicit 170px is just a safety ceiling for unusual
+       cases. Both .screen padding and the corner UI below read these same
+       variables so everything stays in sync automatically. */
+    --wave-top-h: clamp(56px, min(8.7vw, 12vh), 170px);
+    --wave-bottom-h: clamp(56px, min(9.95vw, 9vh), 170px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
   /* overscroll-behavior:none on both html and body is what actually stops a
@@ -70,14 +70,16 @@
      art is never stretched — only cropped via object-fit:cover, and only
      once the height hits its cap on very wide/short windows. Slight
      continuous drift keeps the idle screen feeling alive without being
-     distracting. Confirmed by sampling actual pixels: swoosh-top.png has
-     its red/gold decorative content in the TOP ~75% of the file and fades
-     to plain navy in the bottom ~25%; swoosh-bottom.png is the mirror —
-     plain navy in the top ~25%, decorative gold/ribbon in the bottom ~75%.
-     Since the band is much shorter than the source photo, object-fit:cover
-     always has to crop SOME of it away — object-position below points that
-     crop at each image's plain-navy side (which blends invisibly into the
-     page background anyway) instead of slicing into the actual artwork. */
+     distracting. 2026-09-01: swapped to a new pair of ribbon-wave PNGs —
+     solid navy near one edge (matching the page's own navy so it blends
+     seamlessly), a red ribbon + gold sliver as the color transition, then
+     fully TRANSPARENT for the rest of the frame (intentional this time —
+     don't flatten the alpha channel on these files the way the old buggy
+     source images needed). swoosh-top.png's solid navy sits at its own
+     TOP edge; swoosh-bottom.png's sits at its own BOTTOM edge — object-
+     position below keeps each aligned to that same edge so any cropping
+     (the band is shorter than the source photo) trims from the mostly-
+     transparent far side rather than the ribbon itself. */
   .wave{position:fixed; left:0; right:0; width:100%; z-index:5; pointer-events:none; overflow:hidden;}
   .wave.top{top:0; height:var(--wave-top-h);}
   .wave.bottom{bottom:0; height:var(--wave-bottom-h);}
