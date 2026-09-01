@@ -134,11 +134,15 @@
   .tile.chip{border-radius:999px; min-height:auto; padding:16px 22px; font-size:clamp(14px,1.7vw,17px);}
   .tile.wide{grid-column:1/-1;}
 
-  /* free-text screens: name, contact info, exact age */
+  /* free-text screens: name, contact info, exact age.
+     Sized to sit just a notch above the .tile buttons used on the other
+     screens (font-size clamp(13px,1.4vw,16px), min-height:56px) rather
+     than towering over them — width is unchanged (still 100% up to the
+     520px cap), only the height/font shrank. */
   .text-input{
-    width:100%; max-width:520px; font-family:inherit; font-size:clamp(18px,2.4vw,24px); font-weight:600;
+    width:100%; max-width:520px; font-family:inherit; font-size:clamp(15px,1.7vw,19px); font-weight:600;
     color:var(--navy); background:#fff; border:2px solid #EFE6C8; border-radius:16px;
-    padding:16px 20px; text-align:center; margin-bottom:6px;
+    padding:13px 20px; text-align:center; margin-bottom:6px; min-height:56px;
   }
   .text-input:focus{outline:none; border-color:var(--gold);}
   .text-input.narrow{max-width:220px;}
