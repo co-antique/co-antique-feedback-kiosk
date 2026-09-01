@@ -33,15 +33,20 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Wave band heights: locked to each source photo's real aspect ratio
-       (548/2480 and 343/2480) so the art is NEVER stretched, only ever
-       shown at true proportions — full width, height follows naturally
-       — up to a cap where cropping (object-fit:cover) takes over instead
-       of the band ballooning taller on very narrow/tall windows. Both
-       .screen padding and the corner UI below read the same variables
-       so everything stays in sync with however tall the bands actually
-       render on a given screen, not a guessed fixed number. */
-    --wave-top-h: clamp(56px, 22.1vw, 170px);
-    --wave-bottom-h: clamp(56px, 13.83vw, 170px);
+       (548/2480 and 343/2480) — via the vw term — so the art is never
+       stretched on a narrow/tall window. But on a WIDE-and-SHORT real
+       tablet (confirmed 1280x800 landscape), a pure vw value goes way
+       oversized relative to how much vertical room actually exists — at
+       1280px wide, 22.1vw alone is 283px, nearly 3.5x the vh-based value
+       below, which is what was eating so much of the screen that the idle
+       page had to scroll. min() takes whichever constraint is SMALLER, so
+       the band always respects both the image's proportions AND the
+       screen's actual height, whichever is more restrictive. The explicit
+       170px is now just a safety ceiling for unusual cases, not the normal
+       governing number. Both .screen padding and the corner UI below read
+       these same variables so everything stays in sync automatically. */
+    --wave-top-h: clamp(56px, min(22.1vw, 9vh), 170px);
+    --wave-bottom-h: clamp(56px, min(13.83vw, 7vh), 170px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
   /* overscroll-behavior:none on both html and body is what actually stops a
@@ -65,16 +70,20 @@
      art is never stretched — only cropped via object-fit:cover, and only
      once the height hits its cap on very wide/short windows. Slight
      continuous drift keeps the idle screen feeling alive without being
-     distracting. swoosh-top.png reads gold-at-edge/navy-toward-content
-     as authored, and swoosh-bottom.png already reads navy-toward-content/
-     gold-at-edge top-to-bottom too, so neither band needs to be flipped —
-     they sit directly at the top and bottom of the screen as-is. */
+     distracting. Confirmed by sampling actual pixels: swoosh-top.png has
+     its red/gold decorative content in the TOP ~75% of the file and fades
+     to plain navy in the bottom ~25%; swoosh-bottom.png is the mirror —
+     plain navy in the top ~25%, decorative gold/ribbon in the bottom ~75%.
+     Since the band is much shorter than the source photo, object-fit:cover
+     always has to crop SOME of it away — object-position below points that
+     crop at each image's plain-navy side (which blends invisibly into the
+     page background anyway) instead of slicing into the actual artwork. */
   .wave{position:fixed; left:0; right:0; width:100%; z-index:5; pointer-events:none; overflow:hidden;}
   .wave.top{top:0; height:var(--wave-top-h);}
   .wave.bottom{bottom:0; height:var(--wave-bottom-h);}
   .wave img{position:absolute; top:0; left:-10%; width:120%; height:100%; display:block; object-fit:cover;}
-  .wave.top img{animation:waveDriftA 46s ease-in-out infinite;}
-  .wave.bottom img{animation:waveDriftB 58s ease-in-out infinite;}
+  .wave.top img{animation:waveDriftA 46s ease-in-out infinite; object-position:center top;}
+  .wave.bottom img{animation:waveDriftB 58s ease-in-out infinite; object-position:center bottom;}
   @keyframes waveDriftA{0%,100%{transform:translateX(0);} 50%{transform:translateX(-5.5%);}}
   @keyframes waveDriftB{0%,100%{transform:translateX(0);} 50%{transform:translateX(5%);}}
   @media (prefers-reduced-motion: reduce){ .wave img{animation:none;} }
