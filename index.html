@@ -32,6 +32,16 @@
     --radius:    28px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    /* Wave band heights: locked to each source photo's real aspect ratio
+       (548/2480 and 343/2480) so the art is NEVER stretched, only ever
+       shown at true proportions — full width, height follows naturally
+       — up to a cap where cropping (object-fit:cover) takes over instead
+       of the band ballooning taller on very narrow/tall windows. Both
+       .screen padding and the corner UI below read the same variables
+       so everything stays in sync with however tall the bands actually
+       render on a given screen, not a guessed fixed number. */
+    --wave-top-h: clamp(56px, 22.1vw, 170px);
+    --wave-bottom-h: clamp(56px, 13.83vw, 170px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
   html,body{height:100%;}
@@ -43,19 +53,25 @@
   }
 
   /* ---------- wavy brand frame (top/bottom) ----------
-     Traced from CO Antique's actual signage swooshes (not a generic
-     curve) — each band is base color + a ribbon + a small rectangular
-     "window" notch, matching the real artwork. Slight continuous drift
-     keeps the idle screen feeling alive without being distracting. */
-  .wave{position:fixed; left:0; right:0; width:100%; height:9vh; min-height:56px; max-height:110px; z-index:5; pointer-events:none; overflow:hidden;}
-  .wave.top{top:0;}
-  .wave.bottom{bottom:0; transform:scaleY(-1);}
-  .wave svg{position:absolute; top:0; left:-6%; width:112%; height:100%; display:block;}
-  .wave.top svg{animation:waveDriftA 46s ease-in-out infinite;}
-  .wave.bottom svg{animation:waveDriftB 58s ease-in-out infinite;}
+     The user's actual signage swoosh photos, used directly (not a hand
+     traced approximation). Each band's height is locked to that photo's
+     true aspect ratio (see --wave-top-h/--wave-bottom-h in :root) so the
+     art is never stretched — only cropped via object-fit:cover, and only
+     once the height hits its cap on very wide/short windows. Slight
+     continuous drift keeps the idle screen feeling alive without being
+     distracting. swoosh-top.png reads gold-at-edge/navy-toward-content
+     as authored, and swoosh-bottom.png already reads navy-toward-content/
+     gold-at-edge top-to-bottom too, so neither band needs to be flipped —
+     they sit directly at the top and bottom of the screen as-is. */
+  .wave{position:fixed; left:0; right:0; width:100%; z-index:5; pointer-events:none; overflow:hidden;}
+  .wave.top{top:0; height:var(--wave-top-h);}
+  .wave.bottom{bottom:0; height:var(--wave-bottom-h);}
+  .wave img{position:absolute; top:0; left:-10%; width:120%; height:100%; display:block; object-fit:cover;}
+  .wave.top img{animation:waveDriftA 46s ease-in-out infinite;}
+  .wave.bottom img{animation:waveDriftB 58s ease-in-out infinite;}
   @keyframes waveDriftA{0%,100%{transform:translateX(0);} 50%{transform:translateX(-5.5%);}}
   @keyframes waveDriftB{0%,100%{transform:translateX(0);} 50%{transform:translateX(5%);}}
-  @media (prefers-reduced-motion: reduce){ .wave svg{animation:none;} }
+  @media (prefers-reduced-motion: reduce){ .wave img{animation:none;} }
 
   /* ---------- app shell ---------- */
   #app{
@@ -65,7 +81,7 @@
   .screen{
     position:absolute; inset:0;
     display:none; flex-direction:column; align-items:center; justify-content:safe center;
-    padding: calc(9vh + var(--safe-top) + 18px) 6vw calc(9vh + var(--safe-bottom) + 18px);
+    padding: calc(var(--wave-top-h) + var(--safe-top) + 18px) 6vw calc(var(--wave-bottom-h) + var(--safe-bottom) + 18px);
     text-align:center;
     background:var(--cream);
     opacity:0; transform:translateY(14px);
@@ -177,16 +193,20 @@
 
   /* small build-version watermark — idle + done screens only, kept subtle */
   .version-tag{
-    position:absolute; right:16px; bottom:calc(9vh + var(--safe-bottom) + 10px);
+    position:absolute; right:16px; bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 10px);
     font-size:10px; font-weight:600; letter-spacing:.03em;
-    opacity:.45; pointer-events:none; white-space:nowrap; z-index:2;
+    opacity:.45; pointer-events:auto; white-space:nowrap; z-index:2;
+    /* pointer-events enabled (not "none" like a typical decorative watermark)
+       so the staff long-press gesture below can actually hit-test this
+       element — it's still visually inert otherwise, nothing else here
+       reacts to taps on it besides the 3-second hold. */
   }
   #screen-idle .version-tag{color:#DCE0F5;}
   #screen-done .version-tag{color:var(--ink-soft);}
 
   /* offline / status pill */
   #net-pill{
-    position:fixed; top:calc(9vh + var(--safe-top) + 10px); right:16px; z-index:20;
+    position:fixed; top:calc(var(--wave-top-h) + var(--safe-top) + 10px); right:16px; z-index:20;
     background:rgba(15,27,99,.9); color:#fff; font-size:12px; font-weight:700;
     padding:6px 12px; border-radius:999px; display:none; align-items:center; gap:6px;
   }
@@ -195,7 +215,7 @@
 
   /* back button — hidden on idle/done, and on the very first step */
   #btn-back{
-    position:fixed; top:calc(9vh + var(--safe-top) + 10px); left:16px; z-index:20;
+    position:fixed; top:calc(var(--wave-top-h) + var(--safe-top) + 10px); left:16px; z-index:20;
     background:rgba(15,27,99,.08); color:var(--navy); font-family:inherit; font-weight:800; font-size:14px;
     border:none; padding:10px 18px 10px 14px; border-radius:999px; display:none; align-items:center; gap:6px; cursor:pointer;
   }
@@ -214,28 +234,31 @@
     font-family:inherit; font-size:18px; resize:none; color:var(--ink);
   }
 
+  /* staff-only panel — reached by a 3-second hold on the version-tag watermark
+     (idle/done screens only), not shown or hinted at anywhere else. Lets whoever
+     is servicing the kiosk exit fullscreen or reload without needing OS-level
+     admin access. Not a security boundary by itself — Android Screen Pinning
+     is what actually stops the public from leaving the app; this is just so
+     staff aren't locked out of their own kiosk. */
+  #overlay-staff{
+    position:fixed; inset:0; z-index:40; background:rgba(10,18,63,.7);
+    display:none; align-items:center; justify-content:center; padding:6vw;
+  }
+  #overlay-staff.show{display:flex;}
+  #overlay-staff .box{background:#fff; border-radius:24px; padding:28px; width:100%; max-width:360px; text-align:center;}
+  #overlay-staff .box p{color:var(--ink-soft); font-size:14px; margin:0 0 18px;}
+  #overlay-staff .row-actions{flex-direction:column; gap:10px;}
+  #overlay-staff .btn{width:100%; padding:14px 20px;}
+
   ::-webkit-scrollbar{display:none;}
 </style>
 </head>
 <body>
 
-<!-- Top band: traced from the signage's downward-dipping ribbon (gold field, red
-     ribbon dipping low center, navy base) plus its small "window" notch on the right. -->
-<div class="wave top"><svg viewBox="0 0 1440 100" preserveAspectRatio="none">
-  <rect x="0" y="4" width="1440" height="96" fill="#D4AF37"/>
-  <path d="M0,28 C 220,68 340,88 620,80 C 860,74 980,50 1080,52 C 1220,54 1320,30 1440,16 L1440,100 L0,100 Z" fill="#0F1B63"/>
-  <path d="M0,15 C 220,55 340,75 620,67 C 860,61 980,37 1080,39 C 1220,41 1320,17 1440,3 L1440,16 C 1320,30 1220,54 1080,52 C 980,50 860,74 620,80 C 340,88 220,68 0,28 Z" fill="#9C0D10"/>
-  <path d="M0,4 C 320,1 620,6 760,2 C 980,0 1220,5 1440,1 L1440,0 L0,0 Z" fill="#9C0D10"/>
-</svg></div>
-<!-- Bottom band: traced from the signage's arching ribbon (navy base, red ribbon
-     arching up center, gold field) plus its raised gold "window" step. Reuses
-     the top band's outer-edge-at-top authoring convention; the CSS scaleY(-1)
-     on .wave.bottom flips it so navy still lands on the true screen edge. -->
-<div class="wave bottom"><svg viewBox="0 0 1440 100" preserveAspectRatio="none">
-  <rect x="0" y="0" width="1440" height="100" fill="#0F1B63"/>
-  <path d="M0,72 C 200,80 300,29 480,22 C 660,15 760,55 940,48 C 1120,41 1280,60 1440,50 L1440,100 L0,100 Z" fill="#D4AF37"/>
-  <path d="M0,59 C 200,67 300,16 480,9 C 660,2 760,42 940,35 C 1120,28 1280,47 1440,37 L1440,50 C 1280,60 1120,41 940,48 C 760,55 660,15 480,22 C 300,29 200,80 0,72 Z" fill="#9C0D10"/>
-</svg></div>
+<!-- Top and bottom bands: the user's actual signage swoosh photos, used
+     directly rather than a hand-traced approximation. -->
+<div class="wave top"><img src="swoosh-top.png" alt=""></div>
+<div class="wave bottom"><img src="swoosh-bottom.png" alt=""></div>
 
 <div id="net-pill"><span class="dot"></span><span id="net-pill-text">Saved on device — will sync</span></div>
 <button id="btn-back">&larr; Back</button>
@@ -381,6 +404,18 @@
   </div>
 </div>
 
+<div id="overlay-staff">
+  <div class="box">
+    <h1 class="title" style="font-size:20px;">Staff Options</h1>
+    <p>For servicing this kiosk only.</p>
+    <div class="row-actions">
+      <button class="btn gold" id="btn-staff-fullscreen">Exit Fullscreen</button>
+      <button class="btn" id="btn-staff-reload">Reload App</button>
+      <button class="btn ghost" id="btn-staff-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    CONFIG — edit these before deploying
@@ -483,7 +518,14 @@ function currentScreen(){
 function show(name){
   screens.forEach(s=>{
     const el = document.getElementById("screen-"+s);
-    el.classList.toggle("active", s===name);
+    const isTarget = s===name;
+    el.classList.toggle("active", isTarget);
+    // Strip "show" from every screen we're leaving so it resets to its
+    // pre-transition state (opacity 0 / offset) while hidden. Without this,
+    // a screen you'd already visited once keeps "show" applied from last
+    // time, so re-entering it (e.g. via Back) has nowhere to fade FROM —
+    // the transition collapses into a single frame instead of playing.
+    if(!isTarget) el.classList.remove("show");
   });
   requestAnimationFrame(()=>{
     const el = document.getElementById("screen-"+name);
@@ -800,6 +842,76 @@ if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(()=>{});
   });
 }
+
+/* ============================================================
+   KIOSK LOCKDOWN — keeps the public inside the app and gives
+   staff a documented way back out. None of this replaces
+   Android Screen Pinning (see SETUP.md) — the browser/OS back,
+   home, and recents controls can only be truly blocked at the
+   OS level. This is defense-in-depth plus staff convenience.
+   ============================================================ */
+
+// Real fullscreen (hides the browser chrome even when the app is opened
+// as a normal tab, not just when installed via "Add to Home Screen").
+// Browsers only allow this from inside a user gesture, so it's requested
+// on every tap rather than on load — it's a no-op once already fullscreen.
+function requestKioskFullscreen(){
+  if(document.fullscreenElement) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if(req) req.call(el).catch(()=>{});
+}
+document.addEventListener("click", requestKioskFullscreen);
+
+// Soft deterrent against the Android back gesture/button bouncing a
+// visitor out of the page. Screen Pinning is what actually stops this;
+// this just absorbs an accidental single back-tap before that's set up.
+history.pushState(null, "", location.href);
+window.addEventListener("popstate", ()=>{ history.pushState(null, "", location.href); });
+
+// Blocks the long-press "Download image" / "Open image in new tab" popup
+// Android Chrome shows on <img> elements (the seal, logos, wave art).
+document.addEventListener("contextmenu", (e)=> e.preventDefault());
+
+// Staff-only panel: hold the small version-tag watermark (idle/done
+// screens only) for 3 seconds to reveal Exit-Fullscreen / Reload
+// controls. Deliberately not hinted at anywhere in the UI.
+(function setupStaffPanel(){
+  const HOLD_MS = 3000;
+  const overlay = document.getElementById("overlay-staff");
+  const btnFullscreen = document.getElementById("btn-staff-fullscreen");
+  const btnReload = document.getElementById("btn-staff-reload");
+  const btnCancel = document.getElementById("btn-staff-cancel");
+  let holdTimer = null;
+
+  function openPanel(){
+    btnFullscreen.textContent = document.fullscreenElement ? "Exit Fullscreen" : "Enter Fullscreen";
+    overlay.classList.add("show");
+  }
+  function closePanel(){ overlay.classList.remove("show"); }
+  function startHold(e){
+    if(!e.target.closest(".version-tag")) return;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(openPanel, HOLD_MS);
+  }
+  function cancelHold(){ clearTimeout(holdTimer); }
+
+  document.addEventListener("pointerdown", startHold);
+  document.addEventListener("pointerup", cancelHold);
+  document.addEventListener("pointercancel", cancelHold);
+  document.addEventListener("pointerleave", cancelHold, true);
+
+  btnFullscreen.addEventListener("click", ()=>{
+    if(document.fullscreenElement){
+      (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document).catch(()=>{});
+    } else {
+      requestKioskFullscreen();
+    }
+    closePanel();
+  });
+  btnReload.addEventListener("click", ()=> location.reload());
+  btnCancel.addEventListener("click", closePanel);
+})();
 
 show("idle");
 </script>
