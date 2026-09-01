@@ -117,8 +117,12 @@
     background-image:url('dfa-seal-mono.png');
     background-repeat:no-repeat;
     background-position:center;
-    background-size:min(80vh,85vw) auto;
-    opacity:.5;
+    /* Deliberately oversized — bigger than the screen itself, so it always
+       bleeds off all four edges no matter the window shape (maximalist
+       branding request, 2026-09-01 round 2). Background images clip to
+       their own box automatically, so this never causes layout overflow. */
+    background-size:min(150vh,160vw) auto;
+    opacity:.10;
     pointer-events:none;
     z-index:-1;
   }
