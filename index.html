@@ -247,7 +247,7 @@
 
   /* comment chip screen */
   .chipwrap{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:900px;}
-  .chip-grid{gap:8px;}
+  .chip-grid{gap:6px;}
 
   /* Real-device-only fix (2026-09-02): the "mixed" sentiment bucket shows
      all 12 chips at once (vs 6 for a clean positive/negative bucket) and
@@ -258,14 +258,21 @@
      fit without scrolling; --cols is also bumped to 4 for long lists via
      JS in startComments() so a big list gets 3 rows instead of 4. */
   #screen-comments{
-    padding-top:calc(var(--wave-top-h) + var(--safe-top) + 8px) !important;
-    padding-bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 4px) !important;
+    padding-top:calc(var(--wave-top-h) + var(--safe-top) + 4px) !important;
+    padding-bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 2px) !important;
   }
-  #screen-comments .eyebrow{margin-bottom:6px;}
-  #screen-comments h1.title{margin-bottom:4px;}
-  #screen-comments p.sub{margin-bottom:8px;}
-  #screen-comments .row-actions{margin-top:10px;}
-  #screen-comments .tile.chip{padding:9px 14px; font-size:clamp(11.5px,1.35vw,14px); line-height:1.15;}
+  #screen-comments .eyebrow{margin-bottom:4px;}
+  #screen-comments h1.title{margin-bottom:2px;}
+  #screen-comments p.sub{margin-bottom:6px;}
+  #screen-comments .row-actions{margin-top:8px;}
+  #screen-comments .tile.chip{padding:7px 12px; font-size:clamp(11px,1.3vw,13.5px); line-height:1.1;}
+  /* "Want to say more?" opens a free-text overlay rather than toggling
+     itself like the preset chips, so it gets its own gold-tinted look
+     (same accent family as the Continue button) to read as a distinct,
+     inviting action rather than one more option in the set. */
+  .tile.chip-other{background:#FBF1D6; border-color:var(--gold); color:var(--navy);}
+  .tile.chip-other:active{background:#F5E4AE;}
+  .tile.chip-other.selected{background:var(--navy); border-color:var(--navy); color:#fff;}
 
   /* buttons */
   .btn{
@@ -880,7 +887,7 @@ function startComments(){
     const b = tile(label, function(){ toggleChip(label, this); }, "chip");
     wrap.appendChild(b);
   });
-  const other = tile("Other…", ()=>{ document.getElementById("overlay-text").classList.add("show"); }, "chip wide");
+  const other = tile("Want to say more?", ()=>{ document.getElementById("overlay-text").classList.add("show"); }, "chip wide chip-other");
   other.id = "chip-other";
   wrap.appendChild(other);
 
