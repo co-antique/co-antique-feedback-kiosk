@@ -217,11 +217,18 @@
        short — so the card doesn't visibly resize/jump as you move between a
        one-line and a two-line question. */
     min-height:calc(1.35em * 2);
-    display:flex; align-items:center; justify-content:center; text-align:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
     /* When a question does wrap, balance the two lines instead of letting a
        short 1-3 word tail dangle alone on the second line. Modern Chrome
        only — degrades to normal wrapping if unsupported, which is fine. */
     text-wrap:balance;
+  }
+  /* Secondary clarifying clause on a rating statement (e.g. SQD8's
+     "if denied" caveat) — smaller, italic, softer color so it reads as a
+     footnote to the main statement rather than competing with it. */
+  .statement-card p .rating-note{
+    display:block; font-style:italic; font-weight:600;
+    font-size:.72em; color:var(--ink-soft); margin-top:6px;
   }
   .ratings{display:flex; gap:clamp(8px,1.6vw,18px); justify-content:center; flex-wrap:wrap; width:100%; max-width:960px;}
   .rate-btn{
@@ -472,7 +479,7 @@
     <p class="eyebrow">Step 5 of 5 &middot; Optional</p>
     <h1 class="title" id="comments-title">Anything you'd like to add?</h1>
     <p class="sub">Tap as many as apply. You can also skip this.</p>
-    <div class="chipwrap" id="chip-list"></div>
+    <div class="tiles chip-grid" id="chip-list" style="--cols:3"></div>
     <div class="row-actions">
       <button class="btn ghost" id="btn-comments-skip">Skip</button>
       <button class="btn gold" id="btn-comments-next">Continue</button>
@@ -610,7 +617,7 @@ const STATEMENTS = [
   {id:"SQD5", text:"I paid a reasonable amount of fees for my transaction, or the service did not require fees."},
   {id:"SQD6", text:"I feel the office was fair to everyone during my transaction."},
   {id:"SQD7", text:"I am satisfied with the competence of DFA personnel in performing their duties."},
-  {id:"SQD8", text:"I got what I needed from the government office. (If denied): A sufficient explanation was provided to me."},
+  {id:"SQD8", text:"I got what I needed from the government office.", note:"(If denied: A sufficient explanation was provided to me.)"},
 ];
 const SCALE = [
   {v:5, face:"😄", lbl:"Strongly Agree", cls:"r5"},
@@ -621,7 +628,7 @@ const SCALE = [
   {v:"NA", face:"✕", lbl:"N/A", cls:"rna"},
 ];
 
-const CHIPS_POSITIVE = ["Fast, efficient service","Staff were polite and helpful","Office was clean and comfortable","Process was clear and easy to follow","Got everything I needed"];
+const CHIPS_POSITIVE = ["Fast, efficient service","Staff were polite and helpful","Office was clean and comfortable","Process was clear and easy to follow","Got everything I needed","This feedback kiosk was quick and easy to use"];
 const CHIPS_NEGATIVE = ["Service was slow","Staff were impolite or unhelpful","Facility needs improvement","Process was confusing or unclear","Fees or requirements weren't clear","Didn't get what I needed"];
 
 /* ============================================================
@@ -788,7 +795,19 @@ function startRatings(){ ratingIndex = 0; goTo("rating"); renderRating(); }
 
 function renderRating(){
   const st = STATEMENTS[ratingIndex];
-  document.getElementById("rating-statement").textContent = st.text;
+  const stEl = document.getElementById("rating-statement");
+  stEl.innerHTML = "";
+  stEl.appendChild(document.createTextNode(st.text));
+  // A few statements (like SQD8's "if denied" caveat) carry a secondary
+  // clarifying clause — render it on its own italicized line rather than
+  // letting it run on and wrap awkwardly mid-sentence.
+  if(st.note){
+    stEl.appendChild(document.createElement("br"));
+    const note = document.createElement("em");
+    note.className = "rating-note";
+    note.textContent = st.note;
+    stEl.appendChild(note);
+  }
 
   const prog = document.getElementById("rating-progress");
   prog.innerHTML = "";
@@ -839,7 +858,7 @@ function startComments(){
     const b = tile(label, function(){ toggleChip(label, this); }, "chip");
     wrap.appendChild(b);
   });
-  const other = tile("Other…", ()=>{ document.getElementById("overlay-text").classList.add("show"); }, "chip");
+  const other = tile("Other…", ()=>{ document.getElementById("overlay-text").classList.add("show"); }, "chip wide");
   other.id = "chip-other";
   wrap.appendChild(other);
 
