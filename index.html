@@ -32,14 +32,24 @@
     --radius:    28px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    /* Wave band heights: pure vw, locked 1:1 to each source photo's real
-       aspect ratio (167/1920 and 191/1920, 2026-09-01 replacement art) with
-       no min/max cap at all — the band is always exactly the photo's true,
-       uncropped proportions at whatever width the screen is. Both .screen
-       padding and the corner UI below read these same variables so
-       everything stays in sync automatically. */
-    --wave-top-h: 8.7vw;
-    --wave-bottom-h: 9.95vw;
+    /* Wave band heights: locked to each source photo's real aspect ratio
+       (167/1920 and 191/1920), scaled up by the SAME 1.2x factor the image
+       itself is overscanned by below (.wave img{width:120%}) — that overscan
+       exists purely so the horizontal drift animation has room to pan
+       without exposing edge gaps. 2026-09-02 fix: the band used to be sized
+       at the *un-overscanned* 100%-width aspect ratio (8.7vw/9.95vw), which
+       left the 120%-wide image with MORE natural height than the band had
+       room for, forcing object-fit:cover to crop ~17% off vertically (the
+       "top swoosh gets clipped" bug — invisible on the bottom band only
+       because its crop zone happened to land in blank navy, not visible art).
+       Multiplying the band height by that same 1.2x makes the box exactly
+       big enough to show the whole overscanned image with zero cropping —
+       this isn't a cap/ceiling, it's the real number the animation needs;
+       still no min/max clamp of any kind. Both .screen padding and the
+       corner UI below read these same variables so everything stays in
+       sync automatically. */
+    --wave-top-h: 10.44vw;
+    --wave-bottom-h: 11.94vw;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
   /* overscroll-behavior:none on both html and body is what actually stops a
@@ -136,7 +146,7 @@
     font-family:'Public Sans',system-ui,sans-serif; font-weight:800; color:var(--navy);
     font-size:clamp(26px,4.4vw,46px); line-height:1.15; margin:0 0 6px;
   }
-  p.sub{ color:var(--ink-soft); font-size:clamp(14px,1.9vw,19px); margin:0 0 26px; max-width:56ch;}
+  p.sub{ color:var(--ink-soft); font-size:clamp(14px,1.9vw,19px); margin:0 0 14px; max-width:56ch;}
 
   /* progress dots for the 12-question run */
   .progress{display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap; justify-content:center; max-width:90vw;}
@@ -191,7 +201,7 @@
   select.text-input.select-input{text-align:left; -webkit-appearance:menulist; appearance:menulist;}
 
   /* data-privacy consent checkbox (Name/Contact screen only) */
-  .consent{display:flex; gap:10px; align-items:flex-start; max-width:520px; text-align:left; margin:16px 0 4px;}
+  .consent{display:flex; gap:10px; align-items:flex-start; max-width:520px; text-align:left; margin:10px 0 4px;}
   .consent input[type="checkbox"]{width:26px; height:26px; flex:none; margin-top:2px; accent-color:var(--navy); cursor:pointer;}
   .consent span{font-size:clamp(11px,1.3vw,13px); color:var(--ink-soft); line-height:1.4;}
   .btn[disabled]{opacity:.4; pointer-events:none;}
@@ -240,7 +250,7 @@
   .btn:active{transform:translateY(2px); box-shadow:0 1px 0 var(--navy-dark);}
   .btn.ghost{background:transparent; color:var(--ink-soft); box-shadow:none; font-weight:700;}
   .btn.gold{background:var(--gold); color:var(--navy-dark); box-shadow:0 3px 0 #a5872a;}
-  .row-actions{display:flex; gap:16px; margin-top:26px; align-items:center; flex-wrap:wrap; justify-content:center;}
+  .row-actions{display:flex; gap:16px; margin-top:18px; align-items:center; flex-wrap:wrap; justify-content:center;}
 
   /* idle / welcome screen */
   #screen-idle{background:var(--navy); cursor:pointer;}
@@ -570,7 +580,7 @@ const AGE_OPTIONS = ["Under 18","18–34","35–44","45–64","65+","Prefer not 
 // Region 8), then MIMAROPA (Panay's actual geographic neighbor across the
 // Sulu Sea/Cuyo Pass) and NCR (common for WV-born applicants now based in
 // Manila), then "Other" opens a dropdown of the remaining regions.
-const REGION_PRIMARY = ["Western Visayas","Central Visayas","Eastern Visayas","MIMAROPA","NCR"];
+const REGION_PRIMARY = ["Western Visayas","Central Visayas","Eastern Visayas","MIMAROPA","National Capital Region"];
 const REGION_OTHER_LIST = ["Region 1","Region 2","Region 3","Region 4-A","Region 5","Region 9","Region 10","Region 11","Region 12","Region 13","BARMM","CAR"];
 
 // 12 statements: Citizen's Charter awareness (CC) + Service Quality Dimensions (SQD)
@@ -586,7 +596,7 @@ const STATEMENTS = [
   {id:"SQD5", text:"I paid a reasonable amount of fees for my transaction, or the service did not require fees."},
   {id:"SQD6", text:"I feel the office was fair to everyone during my transaction."},
   {id:"SQD7", text:"I am satisfied with the competence of DFA personnel in performing their duties."},
-  {id:"SQD8", text:"I got what I needed from the government office."},
+  {id:"SQD8", text:"I got what I needed from the government office. (If denied): A sufficient explanation was provided to me."},
 ];
 const SCALE = [
   {v:5, face:"😄", lbl:"Strongly Agree", cls:"r5"},
@@ -736,7 +746,7 @@ document.getElementById("tiles-sex-solo").appendChild(
 );
 
 const tilesAge = document.getElementById("tiles-age");
-AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; goTo("region"); })));
+AGE_OPTIONS.forEach(v=> tilesAge.appendChild(tile(v, ()=>{ state.age=v; goTo("region"); }, v==="Prefer not to say" ? "tile-neutral" : null)));
 
 const tilesRegion = document.getElementById("tiles-region");
 REGION_PRIMARY.forEach(v=> tilesRegion.appendChild(tile(v, ()=>{ state.region=v; startRatings(); })));
