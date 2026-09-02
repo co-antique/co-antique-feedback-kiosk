@@ -252,6 +252,20 @@
   .btn.gold{background:var(--gold); color:var(--navy-dark); box-shadow:0 3px 0 #a5872a;}
   .row-actions{display:flex; gap:16px; margin-top:18px; align-items:center; flex-wrap:wrap; justify-content:center;}
 
+  /* Real-device-only fix (2026-09-02): this screen still scrolled on the
+     tablet even though headless testing showed ~72px of slack — real
+     Chrome's classic scrollbar + font-metric differences eat into that.
+     Trim this screen's own spacing (not the shared classes, so nothing
+     else gets tighter) and shrink the space below Skip/Continue by
+     reducing this screen's bottom padding specifically. */
+  #screen-clientinfo .eyebrow{margin-bottom:6px;}
+  #screen-clientinfo h1.title{margin-bottom:4px;}
+  #screen-clientinfo p.sub{margin-bottom:8px;}
+  #screen-clientinfo .text-input{margin-bottom:4px;}
+  #screen-clientinfo .consent{margin:6px 0 2px;}
+  #screen-clientinfo .row-actions{margin-top:10px;}
+  #screen-clientinfo{padding-bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 4px) !important;}
+
   /* idle / welcome screen */
   #screen-idle{background:var(--navy); cursor:pointer;}
   #screen-idle .seal-row{display:flex; align-items:center; justify-content:center; gap:22px; margin-bottom:18px;}
