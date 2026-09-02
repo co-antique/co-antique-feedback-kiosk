@@ -265,7 +265,13 @@
   #screen-comments h1.title{margin-bottom:2px;}
   #screen-comments p.sub{margin-bottom:6px;}
   #screen-comments .row-actions{margin-top:8px;}
-  #screen-comments .tile.chip{padding:7px 12px; font-size:clamp(11px,1.3vw,13.5px); line-height:1.1;}
+  /* Fixed min-height sized for 2 lines of text — without this, a grid row
+     with a chip that wraps to 2 lines becomes taller than a row of all
+     1-line chips (CSS grid syncs row height to the tallest cell), so some
+     buttons end up visibly bigger than others even though they're styled
+     identically. This keeps every chip the same height regardless of what
+     wraps in its own row. */
+  #screen-comments .tile.chip{padding:7px 12px; font-size:clamp(11px,1.3vw,13.5px); line-height:1.1; min-height:48px;}
   /* "Want to say more?" opens a free-text overlay rather than toggling
      itself like the preset chips, so it gets its own gold-tinted look
      (same accent family as the Continue button) to read as a distinct,
@@ -273,6 +279,42 @@
   .tile.chip-other{background:#FBF1D6; border-color:var(--gold); color:var(--navy);}
   .tile.chip-other:active{background:#F5E4AE;}
   .tile.chip-other.selected{background:var(--navy); border-color:var(--navy); color:#fff;}
+
+  /* Recognize ("want to recognize someone") screen — 11 window tiles + a
+     folded-in "Mention someone" tile = 12, a clean --cols:3 x 4-row grid.
+     Sized to match the comment chips (2026-09-02) and pre-emptively given
+     the same scoped chrome trim as #screen-comments, since 4 rows of
+     two-line buttons is exactly the shape that overflowed there. */
+  #screen-recognize{
+    padding-top:calc(var(--wave-top-h) + var(--safe-top) + 4px) !important;
+    padding-bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 2px) !important;
+  }
+  #screen-recognize .eyebrow{margin-bottom:4px;}
+  #screen-recognize h1.title{margin-bottom:2px;}
+  #screen-recognize p.sub{margin-bottom:6px;}
+  #screen-recognize .row-actions{margin-top:8px;}
+  /* Each window tile stacks "Window N" over a small italic category
+     caption, so the button itself needs a column layout (the base .tile
+     centers a single row of inline content). Fixed min-height keeps every
+     tile the same size regardless of category-name length, same reasoning
+     as the comment chips' min-height fix above. */
+  #screen-recognize .tile.chip{
+    padding:7px 12px; font-size:clamp(12px,1.4vw,14.5px); line-height:1.15; min-height:52px;
+    flex-direction:column; gap:1px;
+  }
+  #screen-recognize .chip-sub{
+    display:block; font-style:italic; font-weight:600; font-size:.72em; opacity:.72;
+  }
+  /* Category color tints — purely a visual grouping cue, the stored value
+     is still just "Window N" regardless of tint. */
+  .tile.recog-processing{background:#DCEBFB; border-color:#B8D8F5;}
+  .tile.recog-authentication{background:#DFF3E1; border-color:#B9E3C0;}
+  .tile.recog-cashier{background:#DCF3F3; border-color:#AEE0E0;}
+  .tile.recog-encoding{background:#E9E3F7; border-color:#CBBEEC;}
+  .tile.recog-releasing{background:#FCE7D6; border-color:#F0C29A;}
+  .tile.recog-processing.selected, .tile.recog-authentication.selected,
+  .tile.recog-cashier.selected, .tile.recog-encoding.selected,
+  .tile.recog-releasing.selected{background:var(--navy); border-color:var(--navy); color:#fff;}
 
   /* buttons */
   .btn{
@@ -517,7 +559,7 @@
     <p class="eyebrow">Optional</p>
     <h1 class="title">Want to recognize someone who helped you?</h1>
     <p class="sub">Pick a window or name — you can choose more than one.</p>
-    <div class="chipwrap" id="recognize-list"></div>
+    <div class="tiles chip-grid" id="recognize-list" style="--cols:3"></div>
     <div class="row-actions">
       <button class="btn ghost" id="btn-recognize-skip">Skip</button>
       <button class="btn gold" id="btn-recognize-next">Finish</button>
@@ -593,9 +635,25 @@ const CONFIG = {
 
   OFFICE: "CO - Antique",
 
-  // Windows currently in use at CO Antique (Window 1, 12, 13 not utilized as of now).
-  // Swap in real staff nicknames later — this is still just window numbers for now.
-  RECOGNIZE_OPTIONS: ["Window 2","Window 3","Window 4","Window 5","Window 6","Window 7","Window 8","Window 9","Window 10","Window 11","Window 14","Releasing Window"],
+  // Windows currently in use at CO Antique (Window 1, 12, 13 not utilized as of now),
+  // grouped by what each one handles (2026-09-02, per office request) — this
+  // grouping drives both the small category caption under each window number
+  // and its color tint on the Recognize screen. "Window 14" now doubles as
+  // the releasing window, so the old standalone "Releasing Window" button
+  // was removed. Swap in real staff nicknames later if wanted.
+  RECOGNIZE_WINDOWS: [
+    {num:2,  cat:"Processing"},
+    {num:3,  cat:"Processing"},
+    {num:4,  cat:"Processing"},
+    {num:5,  cat:"Authentication"},
+    {num:6,  cat:"Authentication"},
+    {num:7,  cat:"Cashier"},
+    {num:8,  cat:"Encoding"},
+    {num:9,  cat:"Encoding"},
+    {num:10, cat:"Encoding"},
+    {num:11, cat:"Encoding"},
+    {num:14, cat:"Releasing"},
+  ],
 
   // How long the "Thank you" screen shows before resetting to idle (ms)
   DONE_DELAY: 3200,
@@ -919,10 +977,21 @@ function afterComments(){
 function startRecognize(){
   const wrap = document.getElementById("recognize-list");
   wrap.innerHTML = "";
-  CONFIG.RECOGNIZE_OPTIONS.forEach(label=>{
-    wrap.appendChild(tile(label, function(){ toggleRecognize(label, this); }, "chip"));
+  // 11 windows + "Mention someone" = 12 tiles, laid out --cols:3 x 4 rows —
+  // a clean, fully-balanced grid (set in the HTML), same tile sizing as the
+  // comment chips. Each window shows its number plus a small italic
+  // category caption, and gets a category-specific color tint (CSS below).
+  CONFIG.RECOGNIZE_WINDOWS.forEach(w=>{
+    const label = "Window " + w.num;
+    const catClass = "recog-" + w.cat.toLowerCase();
+    const b = tile(label, function(){ toggleRecognize(label, this); }, "chip " + catClass);
+    const sub = document.createElement("em");
+    sub.className = "chip-sub";
+    sub.textContent = w.cat;
+    b.appendChild(sub);
+    wrap.appendChild(b);
   });
-  const mention = tile("Mention someone", ()=>{ document.getElementById("overlay-mention").classList.add("show"); }, "chip");
+  const mention = tile("Mention someone", ()=>{ document.getElementById("overlay-mention").classList.add("show"); }, "chip chip-other");
   mention.id = "chip-mention";
   wrap.appendChild(mention);
   goTo("recognize");
