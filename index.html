@@ -247,6 +247,25 @@
 
   /* comment chip screen */
   .chipwrap{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:900px;}
+  .chip-grid{gap:8px;}
+
+  /* Real-device-only fix (2026-09-02): the "mixed" sentiment bucket shows
+     all 12 chips at once (vs 6 for a clean positive/negative bucket) and
+     that overflowed on the tablet even though headless testing looked
+     fine — same recurring gap between headless and the real screen as the
+     clientinfo page. Shrink this screen's own chrome (not the shared
+     classes) and the chip pills themselves so 12 chips + Other reliably
+     fit without scrolling; --cols is also bumped to 4 for long lists via
+     JS in startComments() so a big list gets 3 rows instead of 4. */
+  #screen-comments{
+    padding-top:calc(var(--wave-top-h) + var(--safe-top) + 8px) !important;
+    padding-bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 4px) !important;
+  }
+  #screen-comments .eyebrow{margin-bottom:6px;}
+  #screen-comments h1.title{margin-bottom:4px;}
+  #screen-comments p.sub{margin-bottom:8px;}
+  #screen-comments .row-actions{margin-top:10px;}
+  #screen-comments .tile.chip{padding:9px 14px; font-size:clamp(11.5px,1.35vw,14px); line-height:1.15;}
 
   /* buttons */
   .btn{
@@ -854,6 +873,9 @@ function startComments(){
 
   const wrap = document.getElementById("chip-list");
   wrap.innerHTML = "";
+  // A long combined ("mixed") list gets an extra column so it resolves in
+  // fewer rows — 4 cols x 3 rows for 12 chips instead of 3 cols x 4 rows.
+  wrap.style.setProperty("--cols", list.length > 6 ? 4 : 3);
   list.forEach(label=>{
     const b = tile(label, function(){ toggleChip(label, this); }, "chip");
     wrap.appendChild(b);
