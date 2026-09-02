@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>CO Antique Feedback</title>
 <meta name="theme-color" content="#0F1B63">
 <link rel="manifest" href="manifest.json">
@@ -1151,6 +1151,23 @@ function requestKioskFullscreen(){
   if(req) req.call(el).catch(()=>{});
 }
 document.addEventListener("click", requestKioskFullscreen);
+
+// On-screen-keyboard fix (2026-09-02): the viewport meta's
+// interactive-widget=resizes-content (modern Chrome/Android) already makes
+// the keyboard shrink the page's usable height, which on its own gets a
+// focused input back inside the visible area on most tablets. As a
+// fallback for older WebViews where that meta tag is ignored, this also
+// explicitly scrolls whatever text field was just focused into the center
+// of its screen, once the keyboard has had time to finish animating in.
+// Delegated on the document so it automatically covers every current and
+// future text input/textarea (name, contact, "want to say more?", mention
+// someone) without listing each one by id.
+document.addEventListener("focusin", (e)=>{
+  const el = e.target;
+  if(el.tagName === "INPUT" && el.type !== "text") return;
+  if(el.tagName !== "INPUT" && el.tagName !== "TEXTAREA") return;
+  setTimeout(()=>{ el.scrollIntoView({behavior:"smooth", block:"center"}); }, 320);
+});
 
 // Soft deterrent against the Android back gesture/button bouncing a
 // visitor out of the page. Screen Pinning is what actually stops this;
