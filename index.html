@@ -50,6 +50,11 @@
        sync automatically. */
     --wave-top-h: 10.44vw;
     --wave-bottom-h: 11.94vw;
+    /* Extra top offset reserved for the staff "backfill mode" banner (see
+       #backfill-banner below). 0px normally; set by body.backfill-mode so
+       every top-anchored element (screen padding, net-pill, back button)
+       shifts down together and nothing sits underneath the banner. */
+    --backfill-h: 0px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
   /* overscroll-behavior:none on both html and body is what actually stops a
@@ -101,7 +106,7 @@
   .screen{
     position:absolute; inset:0;
     display:none; flex-direction:column; align-items:center; justify-content:safe center;
-    padding: calc(var(--wave-top-h) + var(--safe-top) + 18px) 6vw calc(var(--wave-bottom-h) + var(--safe-bottom) + 18px);
+    padding: calc(var(--wave-top-h) + var(--safe-top) + var(--backfill-h) + 18px) 6vw calc(var(--wave-bottom-h) + var(--safe-bottom) + 18px);
     text-align:center;
     background:var(--cream);
     opacity:0; transform:translateY(14px);
@@ -258,7 +263,7 @@
      fit without scrolling; --cols is also bumped to 4 for long lists via
      JS in startComments() so a big list gets 3 rows instead of 4. */
   #screen-comments{
-    padding-top:calc(var(--wave-top-h) + var(--safe-top) + 4px) !important;
+    padding-top:calc(var(--wave-top-h) + var(--safe-top) + var(--backfill-h) + 4px) !important;
     padding-bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 2px) !important;
   }
   #screen-comments .eyebrow{margin-bottom:4px;}
@@ -286,7 +291,7 @@
      the same scoped chrome trim as #screen-comments, since 4 rows of
      two-line buttons is exactly the shape that overflowed there. */
   #screen-recognize{
-    padding-top:calc(var(--wave-top-h) + var(--safe-top) + 4px) !important;
+    padding-top:calc(var(--wave-top-h) + var(--safe-top) + var(--backfill-h) + 4px) !important;
     padding-bottom:calc(var(--wave-bottom-h) + var(--safe-bottom) + 2px) !important;
   }
   #screen-recognize .eyebrow{margin-bottom:4px;}
@@ -378,7 +383,7 @@
 
   /* offline / status pill */
   #net-pill{
-    position:fixed; top:calc(var(--wave-top-h) + var(--safe-top) + 10px); right:16px; z-index:20;
+    position:fixed; top:calc(var(--wave-top-h) + var(--safe-top) + var(--backfill-h) + 10px); right:16px; z-index:20;
     background:rgba(15,27,99,.9); color:#fff; font-size:12px; font-weight:700;
     padding:6px 12px; border-radius:999px; display:none; align-items:center; gap:6px;
   }
@@ -387,7 +392,7 @@
 
   /* back button — hidden on idle/done, and on the very first step */
   #btn-back{
-    position:fixed; top:calc(var(--wave-top-h) + var(--safe-top) + 10px); left:16px; z-index:20;
+    position:fixed; top:calc(var(--wave-top-h) + var(--safe-top) + var(--backfill-h) + 10px); left:16px; z-index:20;
     background:rgba(15,27,99,.08); color:var(--navy); font-family:inherit; font-weight:800; font-size:14px;
     border:none; padding:10px 18px 10px 14px; border-radius:999px; display:none; align-items:center; gap:6px; cursor:pointer;
   }
@@ -446,6 +451,46 @@
   #overlay-staff .row-actions{flex-direction:column; gap:10px;}
   #overlay-staff .btn{width:100%; padding:14px 20px;}
 
+  /* Backfill (past-date) block inside the staff panel — lets staff re-encode
+     paper feedback forms under the form's actual date instead of today's.
+     Sits below the fullscreen/reload controls, above the Cancel button. */
+  #staff-backfill-block{margin-top:18px; padding-top:16px; border-top:1px solid #EFE6C8; text-align:left;}
+  #staff-backfill-status{margin:0 0 10px; font-size:13px; font-weight:700; color:var(--ink);}
+  #overlay-staff input[type="date"]{
+    width:100%; padding:12px; margin-bottom:10px; font-size:15px; font-family:inherit;
+    color:var(--navy); background:#fff; border:2px solid #EFE6C8; border-radius:12px;
+  }
+  #overlay-staff input[type="date"]:disabled{background:#F6F2E4; color:var(--ink-soft);}
+  #overlay-staff input[type="date"]:focus{outline:none; border-color:var(--gold);}
+
+  /* Persistent banner shown for the entire duration of backfill mode, on
+     every screen — reinforced by an office-wide amber color swap (below)
+     rather than relying on the banner alone, since a single line of text is
+     easy to stop noticing after the first few re-encoded forms. Both clear
+     together, automatically, the moment the kiosk returns to the idle
+     screen (see show() in the script) — never left for staff to remember. */
+  #backfill-banner{
+    position:fixed; top:0; left:0; right:0; height:var(--backfill-h);
+    z-index:50; display:flex; align-items:center; justify-content:center;
+    background:#5C2700; color:#fff; font-weight:800; text-align:center;
+    font-size:clamp(12px,1.7vw,15px); letter-spacing:.01em; padding:0 4vw;
+    overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  }
+  body:not(.backfill-mode) #backfill-banner{display:none;}
+  body.backfill-mode{
+    --backfill-h: 44px;
+    /* Swap the app's whole navy/gold theme to amber/brown while backfill
+       mode is active. Because nearly every button, background, and
+       selected-state color throughout the kiosk is already written as
+       var(--navy)/var(--gold) rather than a hard-coded hex, overriding the
+       two variables here is enough to reskin the entire flow — every
+       screen looks unmistakably different from normal live-client mode,
+       not just one badge someone could tune out. */
+    --navy: #8A3B00;
+    --navy-dark: #5C2700;
+    --gold: #FFB347;
+  }
+
   ::-webkit-scrollbar{display:none;}
 </style>
 </head>
@@ -455,6 +500,11 @@
      directly rather than a hand-traced approximation. -->
 <div class="wave top"><img src="swoosh-top.png" alt=""></div>
 <div class="wave bottom"><img src="swoosh-bottom.png" alt=""></div>
+
+<!-- Shown only while staff-initiated backfill mode is active (see
+     applyBackfillUI() near the bottom script) — deliberately empty by
+     default; JS fills in the actual date being recorded for. -->
+<div id="backfill-banner"></div>
 
 <div id="net-pill"><span class="dot"></span><span id="net-pill-text">Saved on device — will sync</span></div>
 <button id="btn-back">&larr; Back</button>
@@ -616,6 +666,21 @@
     <div class="row-actions">
       <button class="btn gold" id="btn-staff-fullscreen">Exit Fullscreen</button>
       <button class="btn" id="btn-staff-reload">Reload App</button>
+    </div>
+
+    <!-- For re-encoding paper feedback forms from an earlier date (e.g.
+         after-hours or weekend transactions still logged on paper) through
+         this same kiosk flow, tagged with that form's actual date instead
+         of today's. See setupStaffPanel() in the script. -->
+    <div id="staff-backfill-block">
+      <p id="staff-backfill-status"></p>
+      <input type="date" id="staff-backfill-date">
+      <div class="row-actions">
+        <button class="btn" id="btn-staff-backfill-toggle"></button>
+      </div>
+    </div>
+
+    <div class="row-actions" style="margin-top:14px;">
       <button class="btn ghost" id="btn-staff-cancel">Cancel</button>
     </div>
   </div>
@@ -742,11 +807,54 @@ function resetState(){
 let historyStack = [];
 resetState();
 
+/* ---- Backfill (past-date) mode ----
+   Lets staff re-encode paper feedback forms collected on an earlier date
+   (currently logged via the old Google Form, mainly late-afternoon/
+   after-hours or weekend transactions with no client present) through this
+   same kiosk flow, tagged with that form's actual date instead of today's.
+   Only reachable via the hidden staff panel (setupStaffPanel(), below).
+   Deliberately a variable OUTSIDE `state` — it must survive resetState()
+   so staff can encode several old forms from the same date back-to-back —
+   but it is force-cleared the instant the kiosk returns to the idle screen
+   (see show()), so it can never silently carry into the next live client. */
+let backfillDate = null; // "YYYY-MM-DD", or null when off
+
+function formatBackfillDateLong_(iso){
+  // Build the Date from Y/M/D parts rather than `new Date(iso)` — the
+  // latter parses "YYYY-MM-DD" as UTC midnight, which can display as the
+  // previous day in timezones behind UTC. Parsing components directly
+  // always yields the calendar date staff actually picked.
+  const [y,m,d] = iso.split("-").map(Number);
+  return new Date(y, m-1, d).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+}
+function startBackfillMode(iso){
+  backfillDate = iso;
+  applyBackfillUI();
+}
+function endBackfillMode(){
+  backfillDate = null;
+  applyBackfillUI();
+}
+function applyBackfillUI(){
+  document.body.classList.toggle("backfill-mode", !!backfillDate);
+  const banner = document.getElementById("backfill-banner");
+  if(banner){
+    banner.textContent = backfillDate
+      ? "⚠ BACKFILL MODE — recording for " + formatBackfillDateLong_(backfillDate) + " (not today)"
+      : "";
+  }
+}
+
 const screens = ["idle","clienttype","category","subservice","clientinfo","sex","age","region","rating","comments","recognize","done"];
 function currentScreen(){
   return screens.find(s => document.getElementById("screen-"+s).classList.contains("active"));
 }
 function show(name){
+  // Single, centralized place backfill mode gets switched off — covers the
+  // normal Done->idle timeout, the abandoned-visit safety timeout, and any
+  // future path that returns to idle, without needing a matching change
+  // wherever show("idle") gets called.
+  if(name === "idle" && backfillDate) endBackfillMode();
   screens.forEach(s=>{
     const el = document.getElementById("screen-"+s);
     const isTarget = s===name;
@@ -1037,8 +1145,9 @@ function buildPayload(){
   return {
     kiosk: CONFIG.KIOSK_LABEL,
     office: CONFIG.OFFICE,
-    submittedAt: now.toISOString(),
-    dateOfTransaction: now.toLocaleDateString('en-CA'), // YYYY-MM-DD
+    submittedAt: now.toISOString(), // actual moment this row was encoded — always real "now", even in backfill mode
+    dateOfTransaction: backfillDate || now.toLocaleDateString('en-CA'), // YYYY-MM-DD; overridden while backfilling
+    isBackfill: !!backfillDate,
     clientType: state.clientType,
     serviceCategory: state.category,
     subService: state.subService,
@@ -1189,10 +1298,30 @@ document.addEventListener("contextmenu", (e)=> e.preventDefault());
   const btnFullscreen = document.getElementById("btn-staff-fullscreen");
   const btnReload = document.getElementById("btn-staff-reload");
   const btnCancel = document.getElementById("btn-staff-cancel");
+  const statusEl = document.getElementById("staff-backfill-status");
+  const dateInput = document.getElementById("staff-backfill-date");
+  const toggleBtn = document.getElementById("btn-staff-backfill-toggle");
   let holdTimer = null;
+
+  function refreshBackfillUI(){
+    if(backfillDate){
+      statusEl.textContent = "Backfilling for: " + formatBackfillDateLong_(backfillDate);
+      dateInput.value = backfillDate;
+      dateInput.disabled = true;
+      toggleBtn.textContent = "Return to Today";
+      toggleBtn.classList.add("gold");
+    } else {
+      statusEl.textContent = "Re-encoding an old paper form? Pick its date:";
+      dateInput.disabled = false;
+      dateInput.max = new Date().toLocaleDateString('en-CA'); // backfill dates can't be in the future
+      toggleBtn.textContent = "Start Backfill Mode";
+      toggleBtn.classList.remove("gold");
+    }
+  }
 
   function openPanel(){
     btnFullscreen.textContent = document.fullscreenElement ? "Exit Fullscreen" : "Enter Fullscreen";
+    refreshBackfillUI();
     overlay.classList.add("show");
   }
   function closePanel(){ overlay.classList.remove("show"); }
@@ -1218,6 +1347,18 @@ document.addEventListener("contextmenu", (e)=> e.preventDefault());
   });
   btnReload.addEventListener("click", ()=> location.reload());
   btnCancel.addEventListener("click", closePanel);
+
+  toggleBtn.addEventListener("click", ()=>{
+    if(backfillDate){
+      endBackfillMode();
+    } else if(dateInput.value){
+      startBackfillMode(dateInput.value);
+    } else {
+      dateInput.focus();
+      return; // no date picked yet — leave the panel open
+    }
+    closePanel();
+  });
 })();
 
 show("idle");
