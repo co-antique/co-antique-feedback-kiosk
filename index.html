@@ -691,9 +691,14 @@
    CONFIG — edit these before deploying
    ============================================================ */
 const CONFIG = {
-  // Apps Script "Web app" URL — now the REAL "CO Antique" Google Sheet
-  // deployment (switched over 2026-09-02, replacing the old temp/test one).
-  SUBMIT_URL: "https://script.google.com/macros/s/AKfycbwwnD8k6xIlrwxIdlJ1SUFrwmerCzSaRTx9oEavn2U78w6k9kivUMINIwZq7WaCrQLy/exec",
+  // Apps Script "Web app" URL. Updated 2026-09-05 to a NEW deployment
+  // (different deployment ID from the previous one) — see the note sent
+  // alongside this file about why that matters: a "New deployment" gets
+  // its own separate URL and code snapshot, distinct from doing "New
+  // version" on an existing one, so double-check this deployment is
+  // actually running the current code.gs (Kiosk Submissions tab + backfill
+  // support) before relying on it.
+  SUBMIT_URL: "https://script.google.com/macros/s/AKfycbwxV3GF-jBrfhL6kW5eAiHXajP3cdg3iQOWCudqMko2c4MBD2qvDMC7MWLy0Pzf4cPb/exec",
 
   // Label this tablet so submissions show which unit they came from.
   // e.g. "Main-Tablet-1", "Main-Tablet-2", "Releasing-Tablet"
@@ -727,6 +732,13 @@ const CONFIG = {
   // visit was abandoned and resetting to the welcome screen (ms) — a safety
   // net so one person's half-finished survey doesn't block the next visitor.
   IDLE_RESET_AFTER: 120000,
+  // How long backfill mode may sit on the idle screen, untouched, before it
+  // silently ends on its own (ms). Lets staff re-encode several old paper
+  // forms from the same date back-to-back — each one briefly passes through
+  // the idle screen on its way to "Thank you" and back, and backfill stays
+  // on through that — but if nobody taps "Tap to Begin" again within this
+  // window, it's treated as the batch being over and reverts to live/today.
+  BACKFILL_IDLE_TIMEOUT: 180000,
 };
 
 /* ============================================================
@@ -818,6 +830,7 @@ resetState();
    but it is force-cleared the instant the kiosk returns to the idle screen
    (see show()), so it can never silently carry into the next live client. */
 let backfillDate = null; // "YYYY-MM-DD", or null when off
+let backfillIdleTimer = null;
 
 function formatBackfillDateLong_(iso){
   // Build the Date from Y/M/D parts rather than `new Date(iso)` — the
@@ -827,11 +840,15 @@ function formatBackfillDateLong_(iso){
   const [y,m,d] = iso.split("-").map(Number);
   return new Date(y, m-1, d).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
 }
+function clearBackfillIdleTimer_(){
+  if(backfillIdleTimer){ clearTimeout(backfillIdleTimer); backfillIdleTimer = null; }
+}
 function startBackfillMode(iso){
   backfillDate = iso;
   applyBackfillUI();
 }
 function endBackfillMode(){
+  clearBackfillIdleTimer_();
   backfillDate = null;
   applyBackfillUI();
 }
@@ -850,11 +867,26 @@ function currentScreen(){
   return screens.find(s => document.getElementById("screen-"+s).classList.contains("active"));
 }
 function show(name){
-  // Single, centralized place backfill mode gets switched off — covers the
-  // normal Done->idle timeout, the abandoned-visit safety timeout, and any
-  // future path that returns to idle, without needing a matching change
-  // wherever show("idle") gets called.
-  if(name === "idle" && backfillDate) endBackfillMode();
+  // Backfill mode deliberately survives the brief trip through the idle
+  // screen between one submission and the next (Done -> idle happens on
+  // every single visit), so staff can re-encode several old paper forms
+  // from the same date back-to-back without re-picking the date each time.
+  // It only actually ends if the kiosk is left sitting on the idle screen,
+  // untouched, for CONFIG.BACKFILL_IDLE_TIMEOUT — i.e. nobody comes back to
+  // tap "Tap to Begin" for a while, meaning the backfill batch is over.
+  // Leaving idle for any other screen cancels that countdown so it can
+  // never fire mid-visit and yank the date out from under an in-progress
+  // submission.
+  if(name === "idle"){
+    if(backfillDate){
+      clearBackfillIdleTimer_();
+      backfillIdleTimer = setTimeout(()=>{
+        if(backfillDate) endBackfillMode();
+      }, CONFIG.BACKFILL_IDLE_TIMEOUT);
+    }
+  } else {
+    clearBackfillIdleTimer_();
+  }
   screens.forEach(s=>{
     const el = document.getElementById("screen-"+s);
     const isTarget = s===name;
