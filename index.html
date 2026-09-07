@@ -512,6 +512,37 @@
   }
   .lang-btn.active{background:var(--gold); color:var(--navy-dark); opacity:1;}
 
+  /* Group/Family mode (added 2026-09-07): lets a family/group submit one
+     shared assessment (service, 12 ratings, comments, recognize) that fans
+     out into one row per person at submit time — see submitGroupPayloads()
+     in the script. "How many people" stepper below. */
+  .stepper{display:flex; align-items:center; gap:28px; margin:22px 0;}
+  .stepper-btn{
+    width:60px; height:60px; border-radius:50%; border:none; background:var(--navy); color:#fff;
+    font-size:30px; font-weight:800; cursor:pointer; box-shadow:0 3px 0 var(--navy-dark); line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .stepper-btn:active{transform:translateY(2px); box-shadow:0 1px 0 var(--navy-dark);}
+  .stepper-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .stepper-value{font-size:clamp(40px,7vw,60px); font-weight:800; color:var(--navy); min-width:64px; text-align:center;}
+
+  /* Roster screen — one compact card per person. Name is optional (falls
+     back to "Applicant N" at submit time if left blank); sex + age are
+     required per person. The "different service?" toggle is OFF by
+     default and only expands its mini picker for the rare person whose
+     transaction differs from the group's shared pick. */
+  .roster-list{width:100%; max-width:640px; display:flex; flex-direction:column; gap:12px; margin-bottom:4px;}
+  .roster-card{background:#fff; border:2px solid #EFE6C8; border-radius:18px; padding:16px; text-align:left;}
+  .roster-card-head{font-weight:800; color:var(--red); font-size:13px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:8px;}
+  .roster-card .text-input{margin-bottom:8px; min-height:48px; padding:10px 16px; font-size:15px; width:100%;}
+  .roster-row{display:flex; gap:8px;}
+  .roster-row .text-input{flex:1; min-width:0;}
+  .roster-override-toggle{display:flex; align-items:center; gap:8px; margin-top:2px; font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;}
+  .roster-override-toggle input{width:20px; height:20px; accent-color:var(--navy); cursor:pointer; flex:none;}
+  .roster-override-panel{margin-top:10px; padding-top:10px; border-top:1px dashed #EFE6C8; display:flex; flex-direction:column; gap:8px;}
+  .roster-override-panel[hidden]{display:none;}
+  #roster-status{color:var(--warn); font-weight:700; font-size:13px; margin:6px 0 0; min-height:1.2em;}
+
   ::-webkit-scrollbar{display:none;}
 </style>
 </head>
@@ -546,6 +577,28 @@
     </div>
     <button class="pulse-btn" id="btn-start" data-i18n="tapToBegin">Tap to Begin</button>
     <div class="version-tag">PRE-RELEASE / BETA &middot; Developed by LPD</div>
+  </section>
+
+  <!-- VISIT MODE: individual vs group/family (added 2026-09-07). Sits right
+       after Tap to Begin — see submitGroupPayloads()/renderVisitModeTiles()
+       further down for how a group fans out into one row per person. -->
+  <section class="screen" id="screen-visitmode">
+    <h1 class="title" data-i18n="visitModeTitle">Just you, or a group?</h1>
+    <div class="tiles" id="tiles-visitmode" style="--cols:2"></div>
+  </section>
+
+  <!-- GROUP SIZE (group mode only) -->
+  <section class="screen" id="screen-groupsize">
+    <h1 class="title" data-i18n="groupSizeTitle">How many of you?</h1>
+    <p class="sub" data-i18n="groupSizeSub">Kasama lahat ng may parehong appointment o karanasan.</p>
+    <div class="stepper">
+      <button class="stepper-btn" id="btn-groupsize-minus" type="button">&minus;</button>
+      <div class="stepper-value" id="groupsize-value">2</div>
+      <button class="stepper-btn" id="btn-groupsize-plus" type="button">+</button>
+    </div>
+    <div class="row-actions">
+      <button class="btn gold" id="btn-groupsize-next" data-i18n="continue">Continue</button>
+    </div>
   </section>
 
   <!-- CLIENT TYPE -->
@@ -588,6 +641,19 @@
     <div class="row-actions">
       <button class="btn ghost" data-skip="clientinfo" data-i18n="skipThis">Skip this</button>
       <button class="btn gold" id="btn-clientinfo-next" data-i18n="continue" disabled>Continue</button>
+    </div>
+  </section>
+
+  <!-- ROSTER (group mode only) — one card per person, collected right after
+       the shared client info screen instead of the individual sex/age
+       screens. See buildRosterCard()/initRosterIfNeeded() further down. -->
+  <section class="screen" id="screen-roster">
+    <h1 class="title" data-i18n="rosterTitle">Tell us who's in your group</h1>
+    <p class="sub" data-i18n="rosterSub">Name is optional. Sex and age are needed for each person.</p>
+    <div class="roster-list" id="roster-list"></div>
+    <p id="roster-status"></p>
+    <div class="row-actions">
+      <button class="btn gold" id="btn-roster-next" data-i18n="continue">Continue</button>
     </div>
   </section>
 
@@ -977,6 +1043,22 @@ const I18N = {
   theirNamePlaceholder:{en:"Their name", fil:"Pangalan nila"},
   save:               {en:"Save", fil:"I-save"},
   doneSub:            {en:"Your feedback helps CO Antique serve you better.", fil:"Nakakatulong ang feedback mo para mapaganda pa namin ang serbisyo sa'yo."},
+
+  // Group/Family mode (added 2026-09-07)
+  visitModeTitle:     {en:"Just you, or a group?", fil:"Ikaw lang ba, o kasama mo pa iba?"},
+  justMe:             {en:"Just me", fil:"Ako lang"},
+  groupFamily:        {en:"Group / Family", fil:"Group / Pamilya"},
+  groupSizeTitle:     {en:"How many of you?", fil:"Ilan kayo?"},
+  groupSizeSub:       {en:"Include everyone with the same appointment or experience.", fil:"Isama lahat ng may parehong appointment o karanasan."},
+  rosterTitle:        {en:"Tell us who's in your group", fil:"Sino-sino kayo sa group?"},
+  rosterSub:          {en:"Name is optional. Sex and age are needed for each person.", fil:"Optional ang pangalan. Kailangan lang ng sex at age ng bawat isa."},
+  applicant:          {en:"Applicant", fil:"Applicant"},
+  differentServiceLabel:{en:"Different service for this person?", fil:"Ibang service ba ang kinuha ng taong ito?"},
+  choose:             {en:"Choose...", fil:"Pumili..."},
+  rosterIncomplete:   {en:"Please fill in sex and age for everyone (and the service, if you marked it different) before continuing.", fil:"Pakikumpleto ang sex at age ng lahat (at ang service, kung minarkang iba) bago mag-continue."},
+  clientInfoTitleGroup:{en:"Want to leave a name for the group?", fil:"Gusto niyo bang mag-iwan ng pangalan para sa group?"},
+  clientInfoSubGroup: {en:"Totally optional — this can be just one contact person for the whole group.", fil:"Optional lang 'to — pwedeng isa lang na contact person para sa buong group."},
+  doneSubGroup:       {en:"We recorded feedback for all {n} of you. Thank you!", fil:"Na-record na namin ang feedback ng lahat ng {n} sa inyo. Salamat!"},
 };
 
 // t(key) reads the current `lang`, falling back to English if a key or
@@ -1002,6 +1084,7 @@ function applyLanguage(){
   // Re-render the pieces that are built once from JS (not plain static
   // HTML with a data-i18n tag) so they pick up the new language too.
   renderClientTypeTiles();
+  renderVisitModeTiles();
   renderSexTiles();
   renderAgeTiles();
   refreshRegionOtherTileLabel_();
@@ -1011,6 +1094,8 @@ function applyLanguage(){
   // nothing and keeps this correct if that ever changes.
   if(currentScreen() === "rating") renderRating();
   if(currentScreen() === "subservice" && state.category) renderSubServices(state.category);
+  if(currentScreen() === "clientinfo") updateClientInfoCopy();
+  if(currentScreen() === "roster") renderRoster();
 }
 
 function setLang(newLang){
@@ -1025,6 +1110,15 @@ document.querySelectorAll(".lang-btn").forEach(btn=>{
    STATE + FLOW
    ============================================================ */
 let state = {};
+// Group/Family mode (added 2026-09-07) — kept as top-level `let`s alongside
+// `state` rather than inside it, same reasoning as `ratingIndex` below: they
+// drive the flow itself (which screens appear, how finish() fans out) rather
+// than being one more field that rides along in the payload. All three are
+// reset per-visit in resetState(), unlike backfillDate which deliberately
+// survives across visits.
+let visitMode = "individual"; // "individual" | "group"
+let groupSize = 1;            // 2-6 once visitMode === "group" (see GROUP_SIZE_MIN/MAX)
+let roster = [];              // [{name, sex, age, overrideService, clientType, category, subService}, ...]
 function resetState(){
   state = {
     clientType:null, category:null, subService:null,
@@ -1033,6 +1127,9 @@ function resetState(){
     ratings:{}, chips:[], otherText:"", recognize:[], mentionText:"",
     startedAt:null,
   };
+  visitMode = "individual";
+  groupSize = 1;
+  roster = [];
   // clear any typed text left over from a previous (or abandoned) visit
   ["input-name","input-contact"].forEach(id=>{
     const el = document.getElementById(id);
@@ -1099,7 +1196,7 @@ function applyBackfillUI(){
   }
 }
 
-const screens = ["idle","clienttype","category","subservice","clientinfo","sex","age","region","rating","comments","recognize","done"];
+const screens = ["idle","visitmode","groupsize","clienttype","category","subservice","clientinfo","roster","sex","age","region","rating","comments","recognize","done"];
 function currentScreen(){
   return screens.find(s => document.getElementById("screen-"+s).classList.contains("active"));
 }
@@ -1214,7 +1311,7 @@ Object.keys(SERVICES).forEach(cat=>{
   tilesCategory.appendChild(tile(cat, ()=>{
     state.category = cat;
     const subs = SERVICES[cat];
-    if(subs.length === 1){ state.subService = subs[0]; goTo("clientinfo"); }
+    if(subs.length === 1){ state.subService = subs[0]; goToClientInfo(); }
     else { renderSubServices(cat); goTo("subservice"); }
   }));
 });
@@ -1224,11 +1321,39 @@ function renderSubServices(cat){
   const wrap = document.getElementById("tiles-subservice");
   wrap.innerHTML = "";
   SERVICES[cat].forEach(s=>{
-    wrap.appendChild(tile(s, ()=>{ state.subService = s; goTo("clientinfo"); }));
+    wrap.appendChild(tile(s, ()=>{ state.subService = s; goToClientInfo(); }));
   });
 }
 
-/* ---- Step 3: client info (name/contact, gated by consent) + demographics ---- */
+/* ---- Step 3: client info (name/contact, gated by consent) + demographics ----
+   goToClientInfo()/updateClientInfoCopy() and goToAfterClientInfo() (added
+   2026-09-07) let this one screen serve both individual and group visits:
+   the title/sub swap to the group wording, and where "Continue"/"Skip" go
+   next forks to the roster (group) instead of the individual sex screen. */
+function updateClientInfoCopy(){
+  const titleEl = document.querySelector('#screen-clientinfo h1.title');
+  const subEl = document.querySelector('#screen-clientinfo p.sub');
+  if(visitMode === "group"){
+    titleEl.textContent = t("clientInfoTitleGroup");
+    subEl.textContent = t("clientInfoSubGroup");
+  } else {
+    titleEl.textContent = t("clientInfoTitle");
+    subEl.textContent = t("clientInfoSub");
+  }
+}
+function goToClientInfo(){
+  updateClientInfoCopy();
+  goTo("clientinfo");
+}
+function goToAfterClientInfo(){
+  if(visitMode === "group"){
+    initRosterIfNeeded();
+    goTo("roster");
+  } else {
+    goTo("sex");
+  }
+}
+
 const consentCheck = document.getElementById("consent-check");
 const btnClientInfoNext = document.getElementById("btn-clientinfo-next");
 consentCheck.addEventListener("change", ()=>{ btnClientInfoNext.disabled = !consentCheck.checked; });
@@ -1236,9 +1361,212 @@ consentCheck.addEventListener("change", ()=>{ btnClientInfoNext.disabled = !cons
 btnClientInfoNext.addEventListener("click", ()=>{
   state.name = document.getElementById("input-name").value.trim();
   state.contact = document.getElementById("input-contact").value.trim();
-  goTo("sex");
+  goToAfterClientInfo();
 });
-document.querySelector('[data-skip="clientinfo"]').addEventListener("click", ()=> goTo("sex"));
+document.querySelector('[data-skip="clientinfo"]').addEventListener("click", ()=> goToAfterClientInfo());
+
+/* ---- Visit mode: individual vs group/family (added 2026-09-07) ---- */
+const GROUP_SIZE_MIN = 2, GROUP_SIZE_MAX = 6;
+function renderVisitModeTiles(){
+  const wrap = document.getElementById("tiles-visitmode");
+  wrap.innerHTML = "";
+  wrap.appendChild(tile(t("justMe"), ()=>{
+    visitMode = "individual";
+    groupSize = 1;
+    roster = [];
+    goTo("clienttype");
+  }));
+  wrap.appendChild(tile(t("groupFamily"), ()=>{
+    visitMode = "group";
+    groupSize = Math.max(GROUP_SIZE_MIN, groupSize || GROUP_SIZE_MIN);
+    renderGroupSizeValue();
+    goTo("groupsize");
+  }));
+}
+renderVisitModeTiles();
+
+function renderGroupSizeValue(){
+  document.getElementById("groupsize-value").textContent = groupSize;
+  document.getElementById("btn-groupsize-minus").disabled = groupSize <= GROUP_SIZE_MIN;
+  document.getElementById("btn-groupsize-plus").disabled = groupSize >= GROUP_SIZE_MAX;
+}
+document.getElementById("btn-groupsize-minus").addEventListener("click", ()=>{
+  if(groupSize > GROUP_SIZE_MIN){ groupSize--; renderGroupSizeValue(); }
+});
+document.getElementById("btn-groupsize-plus").addEventListener("click", ()=>{
+  if(groupSize < GROUP_SIZE_MAX){ groupSize++; renderGroupSizeValue(); }
+});
+document.getElementById("btn-groupsize-next").addEventListener("click", ()=>{
+  goTo("clienttype");
+});
+
+/* ---- Roster (group mode only): one card per person. Each defaults to the
+   group's shared Client Type/Category/Sub-Service (picked via the normal
+   clienttype/category/subservice screens just before clientinfo) but can be
+   overridden per-person via the "different service?" checkbox — the more
+   complex of the two options, deliberately chosen over forcing one shared
+   service for the whole group. Sex/age are required for everyone; name is
+   optional and falls back to a hardcoded ENGLISH "Applicant N" at submit
+   time in submitGroupPayloads() (never the translated t("applicant")), so
+   the canonical-English-storage rule holds regardless of kiosk language. ---- */
+function initRosterIfNeeded(){
+  if(roster.length !== groupSize){
+    roster = [];
+    for(let i=0;i<groupSize;i++){
+      roster.push({name:"", sex:null, age:null, overrideService:false, clientType:null, category:null, subService:null});
+    }
+  }
+  renderRoster();
+}
+
+function buildOption(value, label, disabled){
+  const opt = document.createElement("option");
+  opt.value = value;
+  opt.textContent = label;
+  if(disabled) opt.disabled = true;
+  return opt;
+}
+
+function renderRoster(){
+  const wrap = document.getElementById("roster-list");
+  wrap.innerHTML = "";
+  roster.forEach((entry, idx)=> wrap.appendChild(buildRosterCard(entry, idx)));
+  const statusEl = document.getElementById("roster-status");
+  if(statusEl) statusEl.textContent = "";
+}
+
+function buildRosterCard(entry, idx){
+  const card = document.createElement("div");
+  card.className = "roster-card";
+
+  const head = document.createElement("div");
+  head.className = "roster-card-head";
+  head.textContent = t("applicant") + " " + (idx+1);
+  card.appendChild(head);
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "text-input";
+  nameInput.maxLength = 80;
+  nameInput.autocomplete = "off";
+  nameInput.placeholder = t("applicant") + " " + (idx+1);
+  nameInput.value = entry.name || "";
+  nameInput.addEventListener("input", ()=>{ entry.name = nameInput.value; });
+  card.appendChild(nameInput);
+
+  const row = document.createElement("div");
+  row.className = "roster-row";
+
+  const sexSelect = document.createElement("select");
+  sexSelect.className = "text-input select-input";
+  sexSelect.appendChild(buildOption("", t("sexTitle"), true));
+  SEX_OPTIONS.concat(["Prefer not to say"]).forEach(v=>{
+    const label = lang === "fil" ? (SEX_LABELS_FIL[v] || v) : v;
+    sexSelect.appendChild(buildOption(v, label));
+  });
+  sexSelect.value = entry.sex || "";
+  sexSelect.addEventListener("change", ()=>{ entry.sex = sexSelect.value || null; });
+  row.appendChild(sexSelect);
+
+  const ageSelect = document.createElement("select");
+  ageSelect.className = "text-input select-input";
+  ageSelect.appendChild(buildOption("", t("ageTitle"), true));
+  AGE_OPTIONS.forEach(v=>{
+    const label = lang === "fil" ? (AGE_LABELS_FIL[v] || v) : v;
+    ageSelect.appendChild(buildOption(v, label));
+  });
+  ageSelect.value = entry.age || "";
+  ageSelect.addEventListener("change", ()=>{ entry.age = ageSelect.value || null; });
+  row.appendChild(ageSelect);
+
+  card.appendChild(row);
+
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "roster-override-toggle";
+  const toggleCheck = document.createElement("input");
+  toggleCheck.type = "checkbox";
+  toggleCheck.checked = !!entry.overrideService;
+  const toggleText = document.createElement("span");
+  toggleText.textContent = t("differentServiceLabel");
+  toggleLabel.appendChild(toggleCheck);
+  toggleLabel.appendChild(toggleText);
+  card.appendChild(toggleLabel);
+
+  const panel = document.createElement("div");
+  panel.className = "roster-override-panel";
+  panel.hidden = !entry.overrideService;
+
+  const clientTypeSelect = document.createElement("select");
+  clientTypeSelect.className = "text-input select-input";
+  clientTypeSelect.appendChild(buildOption("", t("clientTypeTitle"), true));
+  CLIENT_TYPES.forEach(ct=>{
+    const label = lang === "fil" ? (CLIENT_TYPE_LABELS_FIL[ct] || ct) : ct;
+    clientTypeSelect.appendChild(buildOption(ct, label));
+  });
+  clientTypeSelect.value = entry.clientType || "";
+
+  const categorySelect = document.createElement("select");
+  categorySelect.className = "text-input select-input";
+  categorySelect.appendChild(buildOption("", t("categoryTitle"), true));
+  Object.keys(SERVICES).forEach(cat=> categorySelect.appendChild(buildOption(cat, cat)));
+  categorySelect.value = entry.category || "";
+
+  const subServiceSelect = document.createElement("select");
+  subServiceSelect.className = "text-input select-input";
+
+  function refreshSubServiceOptions(){
+    subServiceSelect.innerHTML = "";
+    subServiceSelect.appendChild(buildOption("", t("choose"), true));
+    const subs = entry.category ? SERVICES[entry.category] : [];
+    subs.forEach(s=> subServiceSelect.appendChild(buildOption(s, s)));
+    if(subs.length === 1){
+      entry.subService = subs[0];
+      subServiceSelect.value = subs[0];
+    } else {
+      subServiceSelect.value = entry.subService || "";
+    }
+  }
+  refreshSubServiceOptions();
+
+  clientTypeSelect.addEventListener("change", ()=>{ entry.clientType = clientTypeSelect.value || null; });
+  categorySelect.addEventListener("change", ()=>{
+    entry.category = categorySelect.value || null;
+    entry.subService = null;
+    refreshSubServiceOptions();
+  });
+  subServiceSelect.addEventListener("change", ()=>{ entry.subService = subServiceSelect.value || null; });
+
+  panel.appendChild(clientTypeSelect);
+  panel.appendChild(categorySelect);
+  panel.appendChild(subServiceSelect);
+  card.appendChild(panel);
+
+  toggleCheck.addEventListener("change", ()=>{
+    entry.overrideService = toggleCheck.checked;
+    panel.hidden = !entry.overrideService;
+    if(!entry.overrideService){
+      entry.clientType = null; entry.category = null; entry.subService = null;
+    }
+  });
+
+  return card;
+}
+
+document.getElementById("btn-roster-next").addEventListener("click", ()=>{
+  const statusEl = document.getElementById("roster-status");
+  for(const entry of roster){
+    if(!entry.sex || !entry.age){
+      statusEl.textContent = t("rosterIncomplete");
+      return;
+    }
+    if(entry.overrideService && (!entry.clientType || !entry.category || !entry.subService)){
+      statusEl.textContent = t("rosterIncomplete");
+      return;
+    }
+  }
+  statusEl.textContent = "";
+  goTo("region");
+});
 
 function renderSexTiles(){
   const wrap = document.getElementById("tiles-sex");
@@ -1458,19 +1786,61 @@ document.getElementById("btn-mention-cancel").addEventListener("click", ()=>{
   document.getElementById("overlay-mention").classList.remove("show");
 });
 
-/* ---- Finish: optimistic UI, submit in background ---- */
+/* ---- Finish: optimistic UI, submit in background ----
+   Group/Family mode (added 2026-09-07) fans one shared assessment out into
+   one row per roster entry via submitGroupPayloads() below, reusing the
+   exact same submitInBackground()/offline-queue pipeline as an individual
+   visit — no backend schema change needed, since doPost() in code.gs just
+   appends whatever fields a payload carries. */
 function finish(){
+  updateDoneScreenCopy();
   show("done");
-  const payload = buildPayload();
-  if(payload.isBackfill){
+  if(visitMode === "group"){
+    submitGroupPayloads();
+  } else {
+    submitInBackground(buildPayload());
+  }
+  if(backfillDate){
     // Count it the moment it's built (optimistic, same spirit as the
     // submission itself) so the banner reflects this batch even though the
-    // no-cors fetch can't confirm the write actually landed.
+    // no-cors fetch can't confirm the write actually landed. Incremented
+    // once per finish() call — i.e. once per visit/group, not once per
+    // roster row — same as backfillDate itself, which is shared by every
+    // row a group visit produces.
     backfillCount++;
     applyBackfillUI();
   }
-  submitInBackground(payload);
   setTimeout(()=>{ resetState(); show("idle"); }, CONFIG.DONE_DELAY);
+}
+
+function submitGroupPayloads(){
+  const groupId = "G-" + Math.random().toString(36).slice(2,6).toUpperCase();
+  roster.forEach((entry, idx)=>{
+    const payload = buildPayload();
+    // Canonical-English-storage rule: the fallback name must be hardcoded
+    // English, never t("applicant"), so the sheet stays consistent
+    // regardless of which language the group used on screen.
+    payload.name = (entry.name || "").trim() || ("Applicant " + (idx+1));
+    payload.sex = entry.sex;
+    payload.ageRange = entry.age;
+    if(entry.overrideService){
+      payload.clientType = entry.clientType;
+      payload.serviceCategory = entry.category;
+      payload.subService = entry.subService;
+    }
+    payload.groupId = groupId;
+    payload.groupIndex = idx + 1;
+    payload.groupSize = roster.length;
+    submitInBackground(payload);
+  });
+}
+
+function updateDoneScreenCopy(){
+  const subEl = document.querySelector('#screen-done p.sub');
+  if(!subEl) return;
+  subEl.textContent = visitMode === "group"
+    ? t("doneSubGroup").replace("{n}", roster.length)
+    : t("doneSub");
 }
 
 function buildPayload(){
@@ -1668,6 +2038,11 @@ function combineCommentsAndRecognizeExport_(payload){
   if(payload.isBackfill){
     combined += " [Backfilled entry — encoded from paper form]";
   }
+  // Group/Family mode (added 2026-09-07) — mirrors the same tag added in
+  // code.gs's combineCommentsAndRecognize_(). Keep these two in sync.
+  if(payload.groupId){
+    combined += " [Group feedback — " + payload.groupIndex + " of " + payload.groupSize + ", ref: " + payload.groupId + "]";
+  }
   return combined;
 }
 function payloadToSheetRow_(payload){
@@ -1726,7 +2101,7 @@ function exportQueuedResponses(){
 /* ---- idle / start ---- */
 document.getElementById("btn-start").addEventListener("click", ()=>{
   resetState();
-  show("clienttype");
+  show("visitmode");
 });
 
 /* Safety auto-reset: if a visit is abandoned mid-flow, return to idle after IDLE_RESET_AFTER of no taps */
