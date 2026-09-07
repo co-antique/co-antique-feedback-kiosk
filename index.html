@@ -76,27 +76,32 @@
      traced approximation). Each band's height is locked to that photo's
      true aspect ratio (see --wave-top-h/--wave-bottom-h in :root) so the
      art is never stretched — only cropped via object-fit:cover, and only
-     once the height hits its cap on very wide/short windows. Slight
-     continuous drift keeps the idle screen feeling alive without being
-     distracting. 2026-09-01: swapped to a new pair of ribbon-wave PNGs —
-     solid navy near one edge (matching the page's own navy so it blends
-     seamlessly), a red ribbon + gold sliver as the color transition, then
-     fully TRANSPARENT for the rest of the frame (intentional this time —
-     don't flatten the alpha channel on these files the way the old buggy
-     source images needed). swoosh-top.png's solid navy sits at its own
-     TOP edge; swoosh-bottom.png's sits at its own BOTTOM edge — object-
-     position below keeps each aligned to that same edge so any cropping
-     (the band is shorter than the source photo) trims from the mostly-
-     transparent far side rather than the ribbon itself. */
+     once the height hits its cap on very wide/short windows. 2026-09-01:
+     swapped to a new pair of ribbon-wave PNGs — solid navy near one edge
+     (matching the page's own navy so it blends seamlessly), a red ribbon +
+     gold sliver as the color transition, then fully TRANSPARENT for the
+     rest of the frame (intentional this time — don't flatten the alpha
+     channel on these files the way the old buggy source images needed).
+     swoosh-top.png's solid navy sits at its own TOP edge; swoosh-bottom.png's
+     sits at its own BOTTOM edge — object-position below keeps each aligned
+     to that same edge so any cropping (the band is shorter than the source
+     photo) trims from the mostly-transparent far side rather than the
+     ribbon itself.
+     2026-09-07: the slow left-right drift was removed (now static/still) —
+     with the roster screen (Group/Family mode) needing real scrolling on
+     the tablet for longer applicant lists, the continuous motion up top
+     was an unnecessary distraction while someone's mid-scroll. The 120%
+     overscan (.wave img{width:120%}, left:-10%) stays even though nothing
+     pans across it anymore — --wave-top-h/--wave-bottom-h's sizing math is
+     still keyed to it (see the :root comment), so removing it would need
+     re-deriving those band heights too. It's harmless now: object-fit:cover
+     just crops the same static frame either way. */
   .wave{position:fixed; left:0; right:0; width:100%; z-index:5; pointer-events:none; overflow:hidden;}
   .wave.top{top:0; height:var(--wave-top-h);}
   .wave.bottom{bottom:0; height:var(--wave-bottom-h);}
   .wave img{position:absolute; top:0; left:-10%; width:120%; height:100%; display:block; object-fit:cover;}
-  .wave.top img{animation:waveDriftA 46s ease-in-out infinite; object-position:center top;}
-  .wave.bottom img{animation:waveDriftB 58s ease-in-out infinite; object-position:center bottom;}
-  @keyframes waveDriftA{0%,100%{transform:translateX(0);} 50%{transform:translateX(-5.5%);}}
-  @keyframes waveDriftB{0%,100%{transform:translateX(0);} 50%{transform:translateX(5%);}}
-  @media (prefers-reduced-motion: reduce){ .wave img{animation:none;} }
+  .wave.top img{object-position:center top;}
+  .wave.bottom img{object-position:center bottom;}
 
   /* ---------- app shell ---------- */
   #app{
